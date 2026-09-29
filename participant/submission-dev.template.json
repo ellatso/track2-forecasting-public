@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.1.0",
+  "interface_version": "2.0",
+  "competition_id": "agenthon2026-forecasting-dev",
+  "track": "forecasting",
+  "phase": "dev",
+  "category": "api",
+  "image": {
+    "registry": "ghcr.io",
+    "repository": "ellatso/agenthon-t2",
+    "digest": "sha256:324aca8c3e765728ff70fcb76e4295684ca885a86a9239f1453ee047460f4af2"
+  },
+  "image_access": "public",
+  "models": [],
+  "license": "MIT"
+}
