@@ -206,6 +206,7 @@ def _monthly_walk(
     panel_steps: np.ndarray,
     last: np.ndarray,
     sd: np.ndarray,
+    drift: np.ndarray,
     chol: np.ndarray,
     n_draws: int,
 ) -> np.ndarray:
@@ -216,7 +217,7 @@ def _monthly_walk(
     out = np.empty((n_draws, len(hist), len(horizons)))
     for month in range(int(anchors.min()) + 1, int(endpoints.max()) + 1):
         z = rng.standard_normal((n_draws, len(hist))) @ chol.T
-        path += z * sd * (month > anchors)
+        path += (z * sd + drift) * (month > anchors)
         for ai, hi in np.argwhere(endpoints == month):
             out[:, ai, hi] = last[ai] + path[:, ai]
     return out
@@ -258,6 +259,9 @@ def _draw(
                 "Provide one positive integer monthly step count per grid cell."
             )
         hist = {a: _monthly_series(s) for a, s in hist.items()}
+    # Restrict each asset to the same trailing observation window used by the public M0
+    # procedure. In particular, a distant transfer-panel history cannot dictate today's scale.
+    hist = {a: s.iloc[-300:] for a, s in hist.items()}
     # Factor panels contain decimal simple returns. A cumulative log-return target sums
     # log(1+r) steps; differencing the rows or adding the last past return is incorrect.
     steps = pd.DataFrame(
@@ -275,7 +279,7 @@ def _draw(
         if returns_target
         else np.array([hist[a].iloc[-1] for a in assets], dtype=float)
     )
-    drift = steps.mean().to_numpy(dtype=float) if returns_target else np.zeros(len(assets))
+    drift = steps.mean().to_numpy(dtype=float)
     sd = steps.std().to_numpy(dtype=float)
     corr = steps.corr().to_numpy(dtype=float)
     corr = np.nan_to_num(corr, nan=0.0)
@@ -287,11 +291,12 @@ def _draw(
 
     if monthly:
         panel_steps = cast(np.ndarray, panel_steps)
-        out = _monthly_walk(rng, hist, horizons, panel_steps, last, sd, chol, n_draws)
+        out = _monthly_walk(rng, hist, horizons, panel_steps, last, sd, drift, chol, n_draws)
         return out, {
             "last": {a: float(last[i]) for i, a in enumerate(assets)},
             "step_unit": "month",
             "step_sd": {a: float(sd[i]) for i, a in enumerate(assets)},
+            "step_drift": {a: float(drift[i]) for i, a in enumerate(assets)},
             "n_history_rows": int(len(steps)),
             "target_type": target_type,
             "panel_steps": {
@@ -358,8 +363,8 @@ As of **{asof}**, monthly level forecasts at horizon keys {horizons}. {n_draws} 
 Each anchor is the last available monthly observation at or before the cutoff.
 The panel can lag the as-of. Monthly steps include that publication lag and end at
 its explicitly supplied observation period. The horizon key is unchanged.
-The monthly standard deviation is estimated from consecutive monthly changes,
-using {stats["n_history_rows"]} overlapping observations. No drift adjustment is made.
+The monthly standard deviation and mean drift are estimated from consecutive monthly changes
+in the trailing 300 observations, using {stats["n_history_rows"]} overlapping steps.
 
 | asset | horizon key | anchor | monthly steps | monthly sd | sd at horizon |
 |---|---|---|---|---|---|
@@ -370,6 +375,9 @@ using {stats["n_history_rows"]} overlapping observations. No drift adjustment is
 Correlated innovations are drawn once per calendar month and accumulated along
 one path for each draw. Forecasts at later periods reuse the earlier innovations.
 The marginal standard deviation is monthly sd times the square root of monthly steps.
+The centre is the anchor plus monthly drift times monthly steps: """ + ", ".join(
+            f"{a}: {stats['step_drift'][a]:.6f} per month" for a in assets
+        ) + f""".
 No text adjustment is made. {n_docs} text document(s) were present and none was read.
 """
     returns_target = stats.get("target_type") == "log_return"
@@ -383,24 +391,25 @@ No text adjustment is made. {n_docs} text document(s) were present and none was 
         "The historical mean daily log return, multiplied by the horizon. This statistical drift "
         "uses only the supplied history at or before the as-of. No text adjustment is made."
         if returns_target
-        else "**None.** This is a driftless random walk: the centre is the anchor, unadjusted. "
-        "Every\n"
-        "adjustment is zero and is listed as such rather than omitted, so the ledger below sums."
+        else "The mean daily change in the trailing 300 observations, multiplied by the "
+        "horizon. No text adjustment is made."
     )
     step_description = (
         "daily log returns, log(1 + panel value)" if returns_target else "first differences"
     )
     correlation_description = "daily log returns" if returns_target else "daily changes"
     ladder = "\n".join(
-        f"| {a} | {stats['last'][a]:.4f} | {stats['daily_sd'][a]:.4f} | "
-        f"{stats['daily_sd'][a] * np.sqrt(h):.4f} | {h} |"
+        f"| {a} | {stats['last'][a]:.4f} | {stats['daily_drift'][a]:.4f} | "
+        f"{stats['last'][a] + stats['daily_drift'][a] * h:.4f} | "
+        f"{stats['daily_sd'][a]:.4f} | {stats['daily_sd'][a] * np.sqrt(h):.4f} | {h} |"
         for a in assets
         for h in horizons
     )
     ledger_header = (
-        "| asset | anchor | daily sd | sd at horizon | horizon (BD) |\n|---|---|---|---|---|"
+        "| asset | anchor | daily drift | centre at horizon | daily sd | sd at horizon | horizon (BD) |\n"
+        "|---|---|---|---|---|---|---|"
     )
-    centre_description = "Centre = anchor + 0 for every asset and horizon."
+    centre_description = "Centre = anchor + historical mean daily change × horizon."
     if returns_target:
         ledger_header = (
             "| asset | anchor | daily drift | centre at horizon | daily sd | "
