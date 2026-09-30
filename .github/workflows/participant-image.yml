@@ -5,6 +5,10 @@ name: Participant T2 candidate image
 on:
   push:
     branches: [submission/t2-coherent]
+    paths:
+      - 'Dockerfile'
+      - 'qfbench2_track_forecasting/**'
+      - '.github/workflows/participant-image.yml'
   workflow_dispatch:
 
 permissions:
