@@ -7,8 +7,8 @@ $ErrorActionPreference = 'Stop'
 $Template = Join-Path $PSScriptRoot 'submission-dev.template.json'
 $OutDir = Join-Path (Join-Path $env:USERPROFILE 'Downloads') "Agenthon-T2-$TeamNumber"
 $Venv = Join-Path $OutDir '.venv'
-$Python = Join-Path $Venv 'Scripts\python.exe'
-$Qfbench = Join-Path $Venv 'Scripts\qfbench2.exe'
+$Python = Join-Path $Venv 'Scripts/python.exe'
+$Qfbench = Join-Path $Venv 'Scripts/qfbench2.exe'
 $Descriptor = Join-Path $OutDir 'submission.json'
 $Zip = Join-Path $OutDir 'submission.zip'
 
