@@ -5,7 +5,7 @@ param([int]$TeamNumber = 609)
 
 $ErrorActionPreference = 'Stop'
 $Template = Join-Path $PSScriptRoot 'submission-dev.template.json'
-$OutDir = Join-Path (Join-Path $env:USERPROFILE 'Downloads') "Agenthon-T2-$TeamNumber"
+$OutDir = Join-Path (Join-Path $env:USERPROFILE 'Downloads') "Agenthon-T2-$TeamNumber-recent-drift"
 $Venv = Join-Path $OutDir '.venv'
 $Python = Join-Path $Venv 'Scripts/python.exe'
 $Qfbench = Join-Path $Venv 'Scripts/qfbench2.exe'
