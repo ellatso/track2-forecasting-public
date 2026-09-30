@@ -35,6 +35,17 @@ def test_level_forecasts_share_innovations_across_horizons() -> None:
     assert stats["n_history_rows"] == 79
 
 
+def test_recent_level_trend_ignores_older_regime_and_moves_centre() -> None:
+    # Two regimes with opposite means: a full-history estimate would cancel them.
+    changes = np.r_[np.tile([1.2, 0.8], 250), np.tile([-0.2, -0.4], 200)]
+    values = 100 + np.r_[0, np.cumsum(changes)]
+    panels, asof = _panels(values)
+    samples, stats = cli._draw(panels, ["A"], [21], asof, 30000, 17)
+    expected = values[-1] + changes[-299:].mean() * 21
+    assert stats["n_history_rows"] == 299
+    assert samples[:, 0, 0].mean() == pytest.approx(expected, abs=0.025)
+
+
 def test_cumulative_returns_use_the_return_distribution_not_its_order() -> None:
     values = np.tile([0.001, 0.005, -0.002, 0.004], 20)
     panels, asof = _panels(values)
