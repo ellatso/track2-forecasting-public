@@ -1,10 +1,10 @@
-# Executive summary (read this first): build and smoke-check Ella's first Track 2 image,
+# Executive summary (read this first): build and smoke-check Ella's recent-window Track 2 image,
 # then publish the exact linux/amd64 image to GitHub Container Registry for submission.
 name: Participant T2 candidate image
 
 on:
   push:
-    branches: [submission/t2-coherent]
+    branches: [submission/t2-recent-drift]
     paths:
       - 'Dockerfile'
       - 'qfbench2_track_forecasting/**'
@@ -27,7 +27,7 @@ jobs:
           context: .
           platforms: linux/amd64
           load: true
-          tags: ghcr.io/ellatso/agenthon-t2:coherent
+          tags: ghcr.io/ellatso/agenthon-t2:recent-drift
       - name: Run forecast on the public exemplar
         run: |
           mkdir -p "$RUNNER_TEMP/t2-output"
@@ -36,7 +36,7 @@ jobs:
             --read-only --tmpfs /tmp \
             -v "$PWD/units/t2-EXAMPLE-ust-curve-1m:/input:ro" \
             -v "$RUNNER_TEMP/t2-output:/output" \
-            ghcr.io/ellatso/agenthon-t2:coherent \
+            ghcr.io/ellatso/agenthon-t2:recent-drift \
             forecast --panels /input/panels --text /input/text \
             --asof 2024-06-28 --out /output/forecast.parquet
           test -s "$RUNNER_TEMP/t2-output/forecast.parquet"
@@ -63,5 +63,5 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish tested image
         run: |
-          docker push ghcr.io/ellatso/agenthon-t2:coherent
-          docker buildx imagetools inspect ghcr.io/ellatso/agenthon-t2:coherent
+          docker push ghcr.io/ellatso/agenthon-t2:recent-drift
+          docker buildx imagetools inspect ghcr.io/ellatso/agenthon-t2:recent-drift
