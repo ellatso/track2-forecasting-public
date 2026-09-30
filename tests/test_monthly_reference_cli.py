@@ -135,6 +135,17 @@ def test_cumulative_paths_have_the_expected_covariance_and_ignore_key_order(mont
     assert "daily_sd" not in meta
 
 
+def test_monthly_level_centre_includes_historical_drift(monthly_unit):
+    _, panel = monthly_unit
+    samples, stats = cli._draw(
+        {"monthly": panel}, ["INDEX"], [21], "2031-02-14", 30000, 17,
+        panel_steps=np.array([[3]]),
+    )
+    expected = panel["value"].iloc[-1] + 3 * panel["value"].diff().mean()
+    assert stats["step_drift"]["INDEX"] == pytest.approx(panel["value"].diff().mean())
+    assert samples[:, 0, 0].mean() == pytest.approx(expected, abs=0.03)
+
+
 def test_two_keys_for_same_period_reuse_the_exact_same_path_value(monthly_unit):
     _, panel = monthly_unit
     samples, _ = cli._draw(
