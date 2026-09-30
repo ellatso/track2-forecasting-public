@@ -12,4 +12,4 @@ The [candidate Action](https://github.com/ellatso/track2-forecasting-public/acti
 powershell -ExecutionPolicy Bypass -File .\participant\pack-windows.ps1
 ```
 
-The script uses Team Number 609 and prompts for the Team Key privately. It writes `Downloads\Agenthon-T2-609\submission.zip` for the Development CodaBench upload. Keep the Team Key and ZIP out of GitHub. It installs the pinned public qfbench2 toolkit using Python 3.13. The image is numerical and text-blind, so the descriptor remains `category: api` and `models: []`. A public gate passing does not predict the leaderboard score.
+The script uses Team Number 609 and prompts for the Team Key privately. It writes `Downloads\Agenthon-T2-609-recent-drift\submission.zip` for the Development CodaBench upload. Keep the Team Key and ZIP out of GitHub. It installs the pinned public qfbench2 toolkit using Python 3.13. The image is numerical and text-blind, so the descriptor remains `category: api` and `models: []`. A public gate passing does not predict the leaderboard score.
