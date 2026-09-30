@@ -21,17 +21,16 @@ def _panels(values: np.ndarray) -> tuple[dict[str, pd.DataFrame], str]:
     return {"synthetic": frame}, dates[-1].strftime("%Y-%m-%d")
 
 
-def test_level_forecasts_preserve_the_previous_fixed_seed_output() -> None:
+def test_level_forecasts_share_innovations_across_horizons() -> None:
     panels, asof = _panels(100.0 + np.cumsum(np.tile([1.0, 0.0, -1.0, 0.0], 20)))
-    samples, stats = cli._draw(panels, ["A"], [1, 21], asof, 500, 17)
-    # Recorded by executing the released producer before the return-target correction.
-    previous = [
-        [[100.77858376552923, 103.060180948387]],
-        [[100.23926821159226, 103.49856301908079]],
-        [[99.61824444819105, 95.15970482426789]],
-        [[99.10901906510834, 93.45386754186264]],
-    ]
-    np.testing.assert_allclose(samples[:4], previous, rtol=0, atol=1e-12)
+    samples, stats = cli._draw(panels, ["A"], [1, 21], asof, 20000, 17)
+    one_day = samples[:, 0, 0] - 100.0
+    twenty_one_days = samples[:, 0, 1] - 100.0
+    # Cov(B_1, B_21) = Var(B_1); independent endpoints would give zero.
+    assert np.cov(one_day, twenty_one_days)[0, 1] == pytest.approx(
+        np.var(one_day), rel=0.06
+    )
+    assert np.std(twenty_one_days) == pytest.approx(np.std(one_day) * np.sqrt(21), rel=0.06)
     assert stats["last"] == {"A": 100.0}
     assert stats["n_history_rows"] == 79
 
