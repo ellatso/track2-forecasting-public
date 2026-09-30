@@ -1,5 +1,5 @@
 # Executive summary (read this first): package the tested T2 image for Team 609.
-# Run this script in PowerShell from a checkout of the submission/t2-baseline branch.
+# Run this script in PowerShell from a checkout of the submission/t2-coherent branch.
 # The Team Key is read only by qfbench2's hidden terminal prompt, never by this script.
 param([int]$TeamNumber = 609)
 
@@ -13,7 +13,7 @@ $Descriptor = Join-Path $OutDir 'submission.json'
 $Zip = Join-Path $OutDir 'submission.zip'
 
 if (-not (Test-Path -LiteralPath $Template)) {
-    throw "Template not found: $Template. Check out the submission/t2-baseline branch."
+    throw "Template not found: $Template. Check out the submission/t2-coherent branch."
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
