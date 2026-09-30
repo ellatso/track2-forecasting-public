@@ -306,11 +306,22 @@ def _draw(
                 for i, a in enumerate(assets)
             },
         }
+    # The same draw must describe one possible future at every horizon. Sampling each
+    # horizon independently preserves its marginal variance but destroys the time
+    # dependence that the joint variogram measures. Draw independent increments over
+    # disjoint horizon intervals and reuse their cumulative sum at later horizons.
     out = np.empty((n_draws, len(assets), len(horizons)), dtype=float)
-    for hi, h in enumerate(horizons):
+    previous_h = 0
+    cumulative = np.zeros((n_draws, len(assets)), dtype=float)
+    for hi in np.argsort(horizons):
+        h = horizons[hi]
+        interval = h - previous_h
+        if interval <= 0:
+            raise ValueError("daily horizons must be positive and distinct")
         z = rng.standard_normal((n_draws, len(assets))) @ chol.T
-        centre = drift * h if returns_target else last
-        out[:, :, hi] = centre + z * (sd * np.sqrt(h))
+        cumulative += z * (sd * np.sqrt(interval)) + drift * interval
+        out[:, :, hi] = (0.0 if returns_target else last) + cumulative
+        previous_h = h
     meta = {
         "last": {a: float(last[i]) for i, a in enumerate(assets)},
         "daily_sd": {a: float(sd[i]) for i, a in enumerate(assets)},
