@@ -48,7 +48,8 @@ jobs:
       - name: Check the public admissibility gates
         run: |
           python -m pip install "qfbench2-common[data] @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.4.4.tar.gz#subdirectory=common"
-          python -m pip install .
+          python -m pip install ".[test]"
+          python -m pytest -q tests/test_reference_cli.py tests/test_monthly_reference_cli.py
           python scoring/scoring.py score \
             --card units/t2-EXAMPLE-ust-curve-1m/card.toml \
             --forecast "$RUNNER_TEMP/t2-output/forecast.parquet" \
