@@ -46,6 +46,22 @@ def test_recent_level_trend_ignores_older_regime_and_moves_centre() -> None:
     assert samples[:, 0, 0].mean() == pytest.approx(expected, abs=0.025)
 
 
+def test_declared_family_calibration_changes_long_horizon_and_retains_f4_shocks() -> None:
+    # The same published panel and random numbers isolate how a declared family alters
+    # a long-range F1 forecast, while F4 retains its empirical shock distribution.
+    changes = np.tile([0.5, -0.2, 0.3, 0.0], 110)
+    panels, asof = _panels(100.0 + np.r_[0, np.cumsum(changes)])
+    base, _ = cli._draw(panels, ["A"], [126], asof, 15000, 17)
+    f1, stats = cli._draw(panels, ["A"], [126], asof, 15000, 17, category="T2-F1")
+    f4, _ = cli._draw(panels, ["A"], [126], asof, 15000, 17, category="T2-F4")
+    np.testing.assert_array_equal(base, f4)
+    anchor = stats["last"]["A"]
+    assert (f1[:, 0, 0].mean() - anchor) / (base[:, 0, 0].mean() - anchor) == pytest.approx(
+        0.5, abs=0.015
+    )
+    assert f1[:, 0, 0].std() / base[:, 0, 0].std() == pytest.approx(0.85, abs=0.005)
+
+
 def test_cumulative_returns_use_the_return_distribution_not_its_order() -> None:
     values = np.tile([0.001, 0.005, -0.002, 0.004], 20)
     panels, asof = _panels(values)
