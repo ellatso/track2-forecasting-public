@@ -233,6 +233,7 @@ def _draw(
     *,
     target_type: str = "level",
     panel_steps: np.ndarray | None = None,
+    category: str | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Joint Gaussian walk, using level changes or daily log returns as steps.
 
@@ -279,8 +280,16 @@ def _draw(
         if returns_target
         else np.array([hist[a].iloc[-1] for a in assets], dtype=float)
     )
-    drift = steps.mean().to_numpy(dtype=float)
-    sd = steps.std().to_numpy(dtype=float)
+    # The declared family is a staged card input, including on Final units. Historical
+    # pre-cutoff walk-forward checks favour modest calibration for F1-F3; retain the
+    # unmodified empirical distribution for F4 shocks and monthly macro observations.
+    drift_factor, spread_factor = {
+        "T2-F1": (0.5, 0.85),
+        "T2-F2": (0.5, 0.85),
+        "T2-F3": (1.0, 0.85),
+    }.get(category, (1.0, 1.0)) if not monthly else (1.0, 1.0)
+    drift = steps.mean().to_numpy(dtype=float) * drift_factor
+    sd = steps.std().to_numpy(dtype=float) * spread_factor
     corr = steps.corr().to_numpy(dtype=float)
     corr = np.nan_to_num(corr, nan=0.0)
     np.fill_diagonal(corr, 1.0)
@@ -297,6 +306,7 @@ def _draw(
             "step_unit": "month",
             "step_sd": {a: float(sd[i]) for i, a in enumerate(assets)},
             "step_drift": {a: float(drift[i]) for i, a in enumerate(assets)},
+            "calibration": (drift_factor, spread_factor),
             "n_history_rows": int(len(steps)),
             "target_type": target_type,
             "panel_steps": {
@@ -333,6 +343,7 @@ def _draw(
         "n_history_rows": int(len(steps)),
         "target_type": target_type,
         "daily_drift": {a: float(drift[i]) for i, a in enumerate(assets)},
+        "calibration": (drift_factor, spread_factor),
     }
     return out, meta
 
@@ -388,11 +399,11 @@ No text adjustment is made. {n_docs} text document(s) were present and none was 
         else "The last observed value of each series at the as-of, taken from the shipped panels"
     )
     adjustments = (
-        "The historical mean daily log return, multiplied by the horizon. This statistical drift "
+        "The calibrated mean daily log return, multiplied by the horizon. This statistical drift "
         "uses only the supplied history at or before the as-of. No text adjustment is made."
         if returns_target
-        else "The mean daily change in the trailing 300 observations, multiplied by the "
-        "horizon. No text adjustment is made."
+        else "The calibrated mean daily change in the trailing 300 observations, multiplied by "
+        "the horizon. No text adjustment is made."
     )
     step_description = (
         "daily log returns, log(1 + panel value)" if returns_target else "first differences"
@@ -437,6 +448,8 @@ As of **{asof}**, joint distribution over {", ".join(assets)} at horizon(s)
 ## Adjustments
 
 {adjustments}
+The declared family applies a {stats['calibration'][0]:.2f} multiplier to empirical drift
+and a {stats['calibration'][1]:.2f} multiplier to empirical standard deviation.
 
 ## Scale and shape
 
@@ -540,6 +553,7 @@ def main(argv: list[str] | None = None) -> int:
         a.seed,
         target_type=tgt.get("target_type", "level"),
         panel_steps=panel_steps,
+        category=card.get("metadata", {}).get("category"),
     )
 
     out_dir = a.out.parent
