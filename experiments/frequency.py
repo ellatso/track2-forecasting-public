@@ -91,26 +91,43 @@ def predict(history, steps, returns, family, monthly, cfg, draws, seed):
     return result.reshape(draws, -1)
 
 
-def run_cases(items, origins, cfgs, seeds, draws, phase):
+def run_cases(
+    items,
+    origins,
+    cfgs,
+    seeds,
+    draws,
+    phase,
+    *,
+    predictor=None,
+    baseline_cfg=None,
+    selection_end=BOUNDARY,
+    validation_bounds=None,
+):
+    predictor = predict if predictor is None else predictor
     rows, cells, excluded = [], [], []
     for i, item in enumerate(items):
         print(f"[{i+1}/{len(items)}] {item['source']}", flush=True)
         for origin in origins:
             try:
                 history, outcome, actual, future = batch.case_at(item, origin)
-                if phase == "select" and future >= BOUNDARY:
+                if phase == "select" and future >= selection_end:
                     raise ValueError("selection outcome enters new validation period")
-                if phase == "holdout" and (actual < BOUNDARY or future >= END):
-                    raise ValueError("validation outcome outside locked 2018-2019 period")
+                if phase == "holdout":
+                    lower, upper = (
+                        (BOUNDARY, END) if validation_bounds is None else validation_bounds[origin]
+                    )
+                    if actual < lower or future >= upper:
+                        raise ValueError("validation outcome outside locked period")
                 pending, pending_cells = [], []
                 for seed in seeds:
-                    base = predict(
+                    base = predictor(
                         history,
                         item["steps"],
                         item["returns"],
                         item["family"],
                         item["monthly"],
-                        configs(item["monthly"])[0],
+                        configs(item["monthly"])[0] if baseline_cfg is None else baseline_cfg,
                         draws,
                         seed,
                     )
@@ -118,7 +135,7 @@ def run_cases(items, origins, cfgs, seeds, draws, phase):
                         base, outcome, item["card"], item["assets"], item["horizons"]
                     )
                     for cfg in cfgs:
-                        samples = predict(
+                        samples = predictor(
                             history,
                             item["steps"],
                             item["returns"],
