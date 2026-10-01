@@ -1,11 +1,11 @@
 # Executive summary (read this first): package the tested T2 image for Team 609.
-# Run this script in PowerShell from a checkout of the submission/t2-recent-drift branch.
+# Run this script in PowerShell from a checkout of the submission/t2-calibrated branch.
 # The Team Key is read only by qfbench2's hidden terminal prompt, never by this script.
 param([int]$TeamNumber = 609)
 
 $ErrorActionPreference = 'Stop'
 $Template = Join-Path $PSScriptRoot 'submission-dev.template.json'
-$OutDir = Join-Path (Join-Path $env:USERPROFILE 'Downloads') "Agenthon-T2-$TeamNumber-recent-drift"
+$OutDir = Join-Path (Join-Path $env:USERPROFILE 'Downloads') "Agenthon-T2-$TeamNumber-calibrated"
 $Venv = Join-Path $OutDir '.venv'
 $Python = Join-Path $Venv 'Scripts/python.exe'
 $Qfbench = Join-Path $Venv 'Scripts/qfbench2.exe'
@@ -13,7 +13,7 @@ $Descriptor = Join-Path $OutDir 'submission.json'
 $Zip = Join-Path $OutDir 'submission.zip'
 
 if (-not (Test-Path -LiteralPath $Template)) {
-    throw "Template not found: $Template. Check out the submission/t2-recent-drift branch."
+    throw "Template not found: $Template. Check out the submission/t2-calibrated branch."
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
