@@ -8,7 +8,7 @@
   "image": {
     "registry": "ghcr.io",
     "repository": "ellatso/agenthon-t2",
-    "digest": "sha256:ab994007388106124591167fbc760c0927517085c154cac6ef8a49d3e14c99ca"
+    "digest": "sha256:1f323d9254e66267ec074ab6e2ac524011d5ce5bbf6f0884c9425a5c3b19b294"
   },
   "image_access": "public",
   "models": [],
