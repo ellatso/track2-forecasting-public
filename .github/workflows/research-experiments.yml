@@ -12,7 +12,10 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,3 +30,14 @@ jobs:
           python -m ruff check experiments tests/test_research_experiments.py
           python -m pytest -q tests/test_research_experiments.py
           python -c 'import nbformat; n=nbformat.read("experiments/results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
+      - name: Exercise real Windows PowerShell launcher
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/experiments/run-windows.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-windows.ps1" -Phase select -RunDir "$env:RUNNER_TEMP/t2-windows-selection"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows selection failed' }
+          if (-not (Test-Path "$env:RUNNER_TEMP/t2-windows-selection/selected.json")) { throw 'No candidate lock written' }
