@@ -159,3 +159,17 @@ def test_modified_plan_refuses_holdout(tmp_path, monkeypatch):
     with pytest.raises(SystemExit):
         batch.main(["--run-dir", str(out), "--phase", "holdout"])
     assert not (out / "holdout_started.json").exists()
+
+
+def test_public_inventory_ignores_windows_cp950_default(monkeypatch):
+    from pathlib import Path
+
+    original = Path.read_text
+
+    def read_with_cp950(path, encoding=None, errors=None, **kwargs):
+        return original(path, encoding=encoding or "cp950", errors=errors, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read_with_cp950)
+    items, skipped, _ = batch.inventory(batch.ROOT)
+    assert len(items) > 0
+    assert not any("cp950" in item["reason"] for item in skipped)
