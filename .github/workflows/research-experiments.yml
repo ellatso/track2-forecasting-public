@@ -27,24 +27,21 @@ jobs:
           python -m pip install "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.4.4.tar.gz#subdirectory=common"
       - name: Validate research tests and notebook structure
         run: |
-          python -m ruff check experiments tests/test_research_experiments.py tests/test_frequency_experiments.py
-          python -m pytest -q tests/test_research_experiments.py tests/test_frequency_experiments.py
+          python -m ruff check experiments tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py
+          python -m pytest -q tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py
           python -c 'import nbformat; n=nbformat.read("experiments/results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
       - name: Validate frequency notebook
         run: python -c 'import nbformat; n=nbformat.read("experiments/frequency-results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
-      - name: Exercise real Windows PowerShell launcher
+      - name: Validate joint notebook
+        run: python -c 'import nbformat; n=nbformat.read("experiments/joint-results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
+      - name: Exercise real Windows joint experiment launcher
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $tokens = $null
           $parseErrors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/experiments/run-windows.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/experiments/run-joint-windows.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
           if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
-          powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-windows.ps1" -Phase select -RunDir "$env:RUNNER_TEMP/t2-windows-selection"
-          if ($LASTEXITCODE -ne 0) { throw 'Windows selection failed' }
-          if (-not (Test-Path "$env:RUNNER_TEMP/t2-windows-selection/selected.json")) { throw 'No candidate lock written' }
-          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/experiments/run-frequency-windows.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
-          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
-          powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-frequency-windows.ps1" -Phase select -RunDir "$env:RUNNER_TEMP/t2-windows-frequency-selection"
-          if ($LASTEXITCODE -ne 0) { throw 'Windows frequency selection failed' }
-          if (-not (Test-Path "$env:RUNNER_TEMP/t2-windows-frequency-selection/selected.json")) { throw 'No frequency lock written' }
+          powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-joint-windows.ps1" -Phase select -RunDir "$env:RUNNER_TEMP/t2-windows-joint-selection"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows joint selection failed' }
+          if (-not (Test-Path "$env:RUNNER_TEMP/t2-windows-joint-selection/selected.json")) { throw 'No joint lock written' }
