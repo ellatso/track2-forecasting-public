@@ -22,6 +22,7 @@ dependencies = [
   "pandas>=2.2",
   "pyarrow>=18",
   "jsonschema>=4.21",
+  "requests==2.34.2",
   # A MINIMUM, not a URL. `agenthon2026-runner/scoring-image/build.sh` stages the toolkit from a
   # local checkout, and its builder has no git and no credentials, so `check_no_git_dep` refuses
   # any `@ git+` dependency in every profile. The git-URL form this line carried from 2026-08-29
@@ -49,7 +50,7 @@ packages = ["qfbench2_track_forecasting"]
 
 [project.scripts]
 # The submission verb. The harness invokes `forecast ...` on PATH.
-forecast = "qfbench2_track_forecasting.cli:main"
+forecast = "qfbench2_track_forecasting.agent:main"
 # The unranked local scorer. Named distinctly from `forecast` so nobody mistakes it for the
 # official path: it grades against card.toml with no reference scale, so its composite is raw.
 qfbench2-t2-score = "qfbench2_track_forecasting.scoring:_main"
