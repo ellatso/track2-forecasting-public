@@ -1,0 +1,32 @@
+{
+  "_executive_summary": "Known image identities and user-reported aggregate scores. Submission-to-image mapping remains unverified until local ZIP audit.",
+  "images": [
+    {
+      "name": "recent-drift",
+      "branch": "submission/t2-recent-drift",
+      "digest": "sha256:ab994007388106124591167fbc760c0927517085c154cac6ef8a49d3e14c99ca"
+    },
+    {
+      "name": "calibrated",
+      "branch": "submission/t2-calibrated",
+      "digest": "sha256:1f323d9254e66267ec074ab6e2ac524011d5ce5bbf6f0884c9425a5c3b19b294"
+    },
+    {
+      "name": "integrated",
+      "branch": "submission/t2-integrated",
+      "digest": "sha256:8ebb470d18219bf49f85e5e8570de8031edd27542160283eb433427f3d89d566"
+    }
+  ],
+  "reported_submissions": [
+    {
+      "id": 954551,
+      "score": -0.9917,
+      "image_digest": null
+    },
+    {
+      "id": 954601,
+      "score": -0.9978,
+      "image_digest": null
+    }
+  ]
+}
