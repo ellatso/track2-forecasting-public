@@ -1,15 +1,27 @@
-## Executive summary (read this first)
+# Executive summary
+The integrated candidate combines the evaluated recent-window numerical method (-1.0042, submission #953358) with evidence-conditioned House-model scenarios. It is a new, unscored candidate; passing admissibility gates does not establish improved forecasting accuracy.
 
-This branch tests the next numerical forecast after CodaBench #952974 scored -1.1400. It uses each asset's last 300 observations and a mean step drift for level targets, including monthly data. The previous coherent-horizon path is retained. The candidate's private CodaBench score is unknown.
+## Forecasting behavior
+The agent first extracts verbatim evidence from indexed documents published by the card cutoff, then requests weighted scenarios linked to validated evidence. FX quote conventions, target units, monthly publication lag and history gaps are explicit. Unsupported adjustments are discarded; bounded shifts, conditional volatility and fat-tailed common shocks preserve coherent trajectories. Half of draws retain the numerical baseline. Invalid or unavailable House responses fall back to that same numerical method.
 
-## Evidence and packaging
+House requests use only the injected authenticated proxy and official endpoint. There are at most three attempts per card, temperature zero, thinking disabled and at most 3600 output tokens per request. No endpoint credentials, Team Key or hidden reasoning trace enter output files. The submission descriptor declares the approved House model.
 
-A local walk-forward check used only published panel rows before their cards' as-of dates. Against a 300-observation, full-drift Gaussian reference, an approximation of the prior forecast's mean Gaussian CRPS ratio was 1.136 for 702 daily asset/time checks and 2.067 for 36 monthly checks. These are diagnostic marginal checks, not the competition's joint score. The new implementation passed 31 focused tests locally; see the Action for the image smoke check and public admissibility gates.
+## Validation and limits
+44 focused tests pass, including an actual HTTP exchange with a local mock proxy, malformed responses, fabricated citations, monthly steps and fallback equality. All 104 published cards pass official g0-g3 checks with House disabled; no realized outcome is read. GitHub Actions validates Python 3.13 and the read-only container before publishing:
+https://github.com/ellatso/track2-forecasting-public/actions/runs/36823807050
 
-The [candidate Action](https://github.com/ellatso/track2-forecasting-public/actions/runs/36709861578) passed the focused tests, public exemplar and admissibility gates.  this branch's `participant/submission-dev.template.json` pins the immutable image digest. On Windows check out this branch and run:
+The actual House service and its judgement quality cannot be tested without organizer-injected credentials. Earlier public-history calibration was exploratory, not an untouched final holdout. This candidate does not promise to beat -0.6301.
 
+## Package on Windows
+Use your existing checkout:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\participant\pack-windows.ps1
+$repo = "C:\Users\ella.tso\Downloads\agenthon-t2"
+git -C "$repo" fetch origin
+git -C "$repo" switch submission/t2-integrated
+git -C "$repo" pull --ff-only origin submission/t2-integrated
+powershell -ExecutionPolicy Bypass -File "$repo\participant\pack-windows.ps1"
 ```
+Enter Team 609's Team Key only at the hidden terminal prompt. Upload:
+`C:\Users\ella.tso\Downloads\Agenthon-T2-609-integrated\submission.zip`
 
-The script uses Team Number 609 and prompts for the Team Key privately. It writes `Downloads\Agenthon-T2-609-recent-drift\submission.zip` for the Development CodaBench upload. Keep the Team Key and ZIP out of GitHub. It installs the pinned public qfbench2 toolkit using Python 3.13. The image is numerical and text-blind, so the descriptor remains `category: api` and `models: []`. A public gate passing does not predict the leaderboard score.
+The template image digest is pinned after the container passes CI. Never upload a ZIP generated before that pin is committed. Keep the Team Key and packed ZIP outside the public repository.
