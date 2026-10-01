@@ -4,6 +4,14 @@
 
 ## Windows：依序執行
 
+已修正台灣 Windows CP950 預設編碼：卡片與 spec 明確以 UTF-8 讀取，啟動 Python 也固定 UTF-8。可一次依序執行三階段，任一階段失敗就停止：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$repo\experiments\run-windows.ps1" -Phase all
+```
+
+第一次仍需先用下面的 git 指令更新分支。舊失敗目錄保留作診斷；重新 select 或 all 會建立新目錄。
+
 ```powershell
 $repo = "C:\Users\ella.tso\Downloads\agenthon-t2"
 git -C "$repo" fetch origin
