@@ -1,15 +1,15 @@
 ## Executive summary (read this first)
 
-This branch tests the next numerical forecast after CodaBench #952974 scored -1.1400. It uses each asset's last 300 observations and a mean step drift for level targets, including monthly data. The previous coherent-horizon path is retained. The candidate's private CodaBench score is unknown.
+This branch tests a family-calibrated forecast following Team 609's Development score of -1.0042 for submission #953358. It retains the 300-observation coherent Gaussian path and monthly macro drift, while calibrating daily forecasts from each unit's declared card family.
 
-## Evidence and packaging
+F1 and F2 daily cards multiply empirical drift by 0.5 and spread by 0.85. F3 daily cards retain empirical drift and multiply spread by 0.85. F4 and monthly cards retain the previous forecast. These choices were evaluated by rolling cutoffs strictly within published pre-as-of panel histories; they are a candidate, not a known improvement on the sealed outcomes. No text is used.
 
-A local walk-forward check used only published panel rows before their cards' as-of dates. Against a 300-observation, full-drift Gaussian reference, an approximation of the prior forecast's mean Gaussian CRPS ratio was 1.136 for 702 daily asset/time checks and 2.067 for 36 monthly checks. These are diagnostic marginal checks, not the competition's joint score. The new implementation passed 31 focused tests locally; see the Action for the image smoke check and public admissibility gates.
+The public historical check covers 99 cards and 1,751 marginal horizon checks. On the last two synthetic cutoffs per card and asset, a 0.5 drift and 0.85 spread had a mean normalized CRPS-plus-pinball ratio of 0.891 (F1) and 0.928 (F2), relative to the previous 1.0. F3's 21 multi-asset cards had 42 synthetic cutoff checks using the published CRPS, variogram and pinball scorers; 0.85 spread yielded a mean normalized composite of 0.969. These historical diagnostics do not identify the private Development score, and the particular event/shock outcomes remain sealed. F4 is unchanged because its text-cued tail risk is not represented by a generic spread shrinkage.
 
-The [candidate Action](https://github.com/ellatso/track2-forecasting-public/actions/runs/36709861578) passed the focused tests, public exemplar and admissibility gates.  this branch's `participant/submission-dev.template.json` pins the immutable image digest. On Windows check out this branch and run:
+After the [candidate Action](https://github.com/ellatso/track2-forecasting-public/actions) passes and the template pins its image digest, on Windows check out this branch and run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\participant\pack-windows.ps1
+powershell -ExecutionPolicy Bypass -File .\\participant\\pack-windows.ps1
 ```
 
-The script uses Team Number 609 and prompts for the Team Key privately. It writes `Downloads\Agenthon-T2-609-recent-drift\submission.zip` for the Development CodaBench upload. Keep the Team Key and ZIP out of GitHub. It installs the pinned public qfbench2 toolkit using Python 3.13. The image is numerical and text-blind, so the descriptor remains `category: api` and `models: []`. A public gate passing does not predict the leaderboard score.
+The Team Key is requested at a hidden prompt. Team Number 609's ZIP is written under `Downloads\\Agenthon-T2-609-calibrated\\submission.zip`; keep it out of the public repository. Submit it to Development CodaBench to measure whether this candidate improves on #953358.
