@@ -153,7 +153,7 @@ def inventory(root):
     selected, skipped, hashes = {}, [], {}
     for cp in sorted((root / "units").glob("*/card.toml")):
         try:
-            card = tomllib.loads(cp.read_text())
+            card = tomllib.loads(cp.read_text(encoding="utf-8"))
             target = card["targets"]
             assets, horizons = list(target["asset_ids"]), list(target["horizons"])
             asof = str(card["provenance"]["data_cutoff"])[:10]
@@ -436,6 +436,17 @@ def main(argv=None):
             encoding="utf-8",
         )
         if frame.empty:
+            print(
+                json.dumps(
+                    {
+                        "inventory_skipped_examples": skipped[:3],
+                        "selection_excluded_examples": excluded[:3],
+                    },
+                    indent=2,
+                    ensure_ascii=True,
+                ),
+                flush=True,
+            )
             raise SystemExit("No eligible historical selection cases; see coverage.json.")
         frame.to_csv(out / "selection_cases.csv", index=False)
         save_diagnostics(frame, out, "selection")
