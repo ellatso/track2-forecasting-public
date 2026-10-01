@@ -160,7 +160,7 @@ def _monthly_inputs(
     spec = None
     if path.exists():
         try:
-            spec = json.loads(path.read_text())
+            spec = json.loads(path.read_text(encoding="utf-8"))
         except (ValueError, OSError):
             raise HorizonMetadataError(
                 "Read a valid forecast_spec.json beside card.toml."
@@ -507,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     import tomllib
 
-    card = tomllib.loads(card_path.read_text())
+    card = tomllib.loads(card_path.read_text(encoding="utf-8"))
     tgt = card["targets"]
     assets = list(tgt["asset_ids"])
     horizons = [int(h) for h in tgt["horizons"]]
