@@ -6,7 +6,7 @@ F1 and F2 daily cards multiply empirical drift by 0.5 and spread by 0.85. F3 dai
 
 The public historical check covers 99 cards and 1,751 marginal horizon checks. On the last two synthetic cutoffs per card and asset, a 0.5 drift and 0.85 spread had a mean normalized CRPS-plus-pinball ratio of 0.891 (F1) and 0.928 (F2), relative to the previous 1.0. F3's 21 multi-asset cards had 42 synthetic cutoff checks using the published CRPS, variogram and pinball scorers; 0.85 spread yielded a mean normalized composite of 0.969. These historical diagnostics do not identify the private Development score, and the particular event/shock outcomes remain sealed. F4 is unchanged because its text-cued tail risk is not represented by a generic spread shrinkage.
 
-After the [candidate Action](https://github.com/ellatso/track2-forecasting-public/actions) passes and the template pins its image digest, on Windows check out this branch and run:
+The [candidate Action](https://github.com/ellatso/track2-forecasting-public/actions/runs/36818505428) passed the public exemplar, 32 producer tests and the admissibility gates. The template pins that tested image digest. on Windows check out this branch and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\\participant\\pack-windows.ps1
