@@ -103,6 +103,8 @@ def run_cases(
     baseline_cfg=None,
     selection_end=BOUNDARY,
     validation_bounds=None,
+    prediction_diagnostics=None,
+    history_validator=None,
 ):
     predictor = predict if predictor is None else predictor
     rows, cells, excluded = [], [], []
@@ -119,6 +121,8 @@ def run_cases(
                     )
                     if actual < lower or future >= upper:
                         raise ValueError("validation outcome outside locked period")
+                if history_validator is not None:
+                    history_validator(item, actual)
                 pending, pending_cells = [], []
                 for seed in seeds:
                     base = predictor(
@@ -160,6 +164,10 @@ def run_cases(
                             outcome_end=future,
                             seed=seed,
                         )
+                        if prediction_diagnostics is not None:
+                            common.update(
+                                prediction_diagnostics(history, item["steps"], item["returns"], cfg)
+                            )
                         components = {}
                         for k, weight in zip(
                             ("marginal", "joint", "tail"),
