@@ -44,6 +44,8 @@ try {
             if ($QuickCheck) { $ExtraArgs += '--quick-check' }
             & $Python -X utf8 -m experiments.means --run-dir $RunDir @ExtraArgs
             if ($LASTEXITCODE -ne 0) { throw 'Experiment failed. Read the terminal and coverage reports.' }
+            & $Python -X utf8 -m experiments.mean_scales --run-dir $RunDir
+            if ($LASTEXITCODE -ne 0) { throw 'Fixed-scale sensitivity replay failed.' }
             if ($CurrentPhase -eq 'benchmark') { Set-Content -LiteralPath $Latest -Value $RunDir -Encoding UTF8 }
             Write-Host "Results: $RunDir"
             Write-Host 'These are historical diagnostics; do not commit outputs or claim independent validation.'
