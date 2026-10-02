@@ -39,7 +39,8 @@ try {
             & $Python -X utf8 -m notebook $Notebook
             if ($LASTEXITCODE -ne 0) { throw 'Notebook launch failed.' }
         } else {
-            $ExtraArgs = if ($QuickCheck) { @('--quick-check') } else { @() }
+            [string[]]$ExtraArgs = @()
+            if ($QuickCheck) { $ExtraArgs += '--quick-check' }
             & $Python -X utf8 -m experiments.suite --run-dir $RunDir @ExtraArgs
             if ($LASTEXITCODE -ne 0) { throw 'Experiment failed. Read the terminal and coverage reports.' }
             if ($CurrentPhase -eq 'benchmark') { Set-Content -LiteralPath $Latest -Value $RunDir -Encoding UTF8 }
