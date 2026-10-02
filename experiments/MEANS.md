@@ -29,3 +29,8 @@ git clone --branch research/t2-mean-models --single-branch https://github.com/el
 powershell -ExecutionPolicy Bypass -File "C:\Users\ella.tso\Downloads\agenthon-t2-mean-models\experiments\run-means-windows.ps1" -Phase benchmark
 ```
 Outputs remain in Downloads/Agenthon-T2-Research-V8. Use Phase all to open the notebook afterward, or Phase notebook for the latest successful run. QuickCheck uses one explored date, 200 draws and seed 0; it is a runtime exercise. Do not upload the research-results ZIP to CodaBench.
+
+### Fixed-scale sensitivity
+The original per-case baseline joint loss may be nearly zero, making loss ratios extremely sensitive to an individual seed. The launcher preserves primary results and automatically runs experiments.mean_scales afterward. Pool current-baseline raw losses across explored origins and seeds separately for each identical target grid; hold those scoring scales fixed across all methods and cases. Every composite is recomputed by the existing scorer, with raw losses checked against the primary run. No formula, effective weight, case or forecast is changed.
+
+This sensitivity is retrospective calibration on explored outcomes. It is not organizer M0, new OOS, or a replacement for production scoring. Source, inputs and primary result hashes are recorded. Read stable_daily/stable_monthly tables alongside the original tables. A year's fixed-scale baseline loss need not equal one: compare candidate and reference within the same year before describing percentage improvements. No image is promoted automatically.
