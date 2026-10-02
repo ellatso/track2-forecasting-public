@@ -51,7 +51,7 @@ COPY qfbench2_track_forecasting /opt/qfbench2_track_forecasting
 ENV PYTHONPATH=/opt
 
 # The verb, as an executable on PATH.
-RUN printf '#!/bin/sh\nexec python3 -m qfbench2_track_forecasting.agent "$@"\n' \
+RUN printf '#!/bin/sh\nexec python3 -m qfbench2_track_forecasting.candidate "$@"\n' \
       > /usr/local/bin/forecast \
  && chmod +x /usr/local/bin/forecast
 
