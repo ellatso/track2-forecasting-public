@@ -233,6 +233,8 @@ def _draw(
     *,
     target_type: str = "level",
     panel_steps: np.ndarray | None = None,
+    drift_factor: float = 1.0,
+    variance_mix: float = 0.0,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Joint Gaussian walk, using level changes or daily log returns as steps.
 
@@ -281,12 +283,26 @@ def _draw(
     )
     drift = steps.mean().to_numpy(dtype=float)
     sd = steps.std().to_numpy(dtype=float)
+    candidate_daily = not monthly and (drift_factor != 1.0 or variance_mix != 0.0)
+    if candidate_daily:
+        if not np.isfinite(drift_factor) or not 0 <= variance_mix <= 1:
+            raise ValueError("Invalid daily drift or variance mixture")
+        increments = steps.to_numpy(dtype=float)
+        weights = np.exp2(-np.arange(len(increments) - 1, -1, -1) / 60.0)
+        weights /= weights.sum()
+        centre = (increments * weights[:, None]).sum(axis=0)
+        recent_var = ((increments - centre) ** 2 * weights[:, None]).sum(axis=0)
+        sd = np.maximum(np.sqrt((1 - variance_mix) * sd**2 + variance_mix * recent_var), 1e-10)
+        drift *= drift_factor
     corr = steps.corr().to_numpy(dtype=float)
     corr = np.nan_to_num(corr, nan=0.0)
     np.fill_diagonal(corr, 1.0)
     # Nearest-PSD nudge: an empirical correlation can be indefinite after nan_to_num.
     w, v = np.linalg.eigh(corr)
     corr = v @ np.diag(np.clip(w, 1e-8, None)) @ v.T
+    if candidate_daily:
+        norm = np.sqrt(np.diag(corr))
+        corr /= np.outer(norm, norm)
     chol = np.linalg.cholesky(corr)
 
     if monthly:
@@ -406,7 +422,8 @@ No text adjustment is made. {n_docs} text document(s) were present and none was 
         for h in horizons
     )
     ledger_header = (
-        "| asset | anchor | daily drift | centre at horizon | daily sd | sd at horizon | horizon (BD) |\n"
+        "| asset | anchor | daily drift | centre at horizon | daily sd | "
+        "sd at horizon | horizon (BD) |\n"
         "|---|---|---|---|---|---|---|"
     )
     centre_description = "Centre = anchor + historical mean daily change × horizon."
