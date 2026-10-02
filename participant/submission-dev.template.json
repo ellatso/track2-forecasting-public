@@ -8,17 +8,9 @@
   "image": {
     "registry": "ghcr.io",
     "repository": "ellatso/agenthon-t2",
-    "digest": "sha256:8ebb470d18219bf49f85e5e8570de8031edd27542160283eb433427f3d89d566"
+    "digest": "sha256:461343391b707c8293d5cabad429d7b48d61c50f89357f755827dbf4a1625aac"
   },
   "image_access": "public",
-  "models": [
-    {
-      "name": "nvidia/nemotron-3-super-120b-a12b",
-      "version": "rl-030326-fp8",
-      "revision": "rl-030326-fp8",
-      "training_cutoff": "unpublished",
-      "access": "api"
-    }
-  ],
+  "models": [],
   "license": "MIT"
 }
