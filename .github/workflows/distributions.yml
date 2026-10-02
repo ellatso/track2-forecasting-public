@@ -1,0 +1,39 @@
+# Executive summary: verify the frozen distribution suite on Linux and Windows; publish no scores.
+name: Distribution research validation
+on:
+  push:
+    branches: [research/t2-distributions]
+    paths: ['experiments/distributions.py', 'experiments/run-distributions-windows.ps1', 'experiments/distribution-results.ipynb', 'tests/test_distribution_experiments.py', '.github/workflows/distributions.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned toolkit
+        run: |
+          python -m pip install numpy==2.1.3 pandas==2.2.3 pyarrow==18.1.0 jsonschema==4.23.0 requests==2.34.2 pytest ruff==0.4.7 nbformat
+          python -m pip install "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.4.4.tar.gz#subdirectory=common"
+      - name: Check numerical controls and clean notebook
+        run: |
+          python -m ruff check experiments/distributions.py tests/test_distribution_experiments.py
+          python -m pytest -q tests/test_distribution_experiments.py tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py tests/test_adaptive_experiments.py tests/test_ablation_experiments.py tests/test_suite_experiments.py tests/test_submission_candidate.py
+          python -c 'import nbformat; n=nbformat.read("experiments/distribution-results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
+      - name: Check Windows launcher and real quick benchmark
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/experiments/run-distributions-windows.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-distributions-windows.ps1" -Phase benchmark -QuickCheck -RunDir "$env:RUNNER_TEMP/t2-distribution-quick-check"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows quick check failed' }
+          if (-not (Test-Path "$env:RUNNER_TEMP/t2-distribution-quick-check/decision.json")) { throw 'Missing completed report' }
