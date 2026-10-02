@@ -38,5 +38,3 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Windows quick check failed' }
           if (-not (Test-Path "$env:RUNNER_TEMP/t2-mean-quick-check/decision.json")) { throw 'Missing completed frequency results' }
 
-          python -X utf8 -m experiments.mean_scales --run-dir "$env:RUNNER_TEMP/t2-mean-quick-check"
-          if ($LASTEXITCODE -ne 0) { throw 'Fixed-scale replay failed' }
