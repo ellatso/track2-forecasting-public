@@ -3,7 +3,7 @@ name: Mean-model research validation
 on:
   push:
     branches: [research/t2-mean-models]
-    paths: ['experiments/means.py', 'experiments/run-means-windows.ps1', 'experiments/mean-results.ipynb', 'tests/test_mean_experiments.py', '.github/workflows/means.yml']
+    paths: ['experiments/means.py', 'experiments/mean_scales.py', 'experiments/run-means-windows.ps1', 'experiments/mean-results.ipynb', 'tests/test_mean_experiments.py', '.github/workflows/means.yml']
 permissions:
   contents: read
 jobs:
@@ -23,7 +23,7 @@ jobs:
           python -m pip install "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.4.4.tar.gz#subdirectory=common"
       - name: Check numerical controls and notebook
         run: |
-          python -m ruff check experiments/means.py tests/test_mean_experiments.py
+          python -m ruff check experiments/means.py experiments/mean_scales.py tests/test_mean_experiments.py
           python -m pytest -q tests/test_mean_experiments.py tests/test_distribution_experiments.py tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py tests/test_adaptive_experiments.py tests/test_ablation_experiments.py tests/test_suite_experiments.py tests/test_submission_candidate.py
           python -c 'import nbformat; n=nbformat.read("experiments/mean-results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
       - name: Exercise actual Windows launcher
@@ -37,3 +37,6 @@ jobs:
           powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-means-windows.ps1" -Phase benchmark -QuickCheck -RunDir "$env:RUNNER_TEMP/t2-mean-quick-check"
           if ($LASTEXITCODE -ne 0) { throw 'Windows quick check failed' }
           if (-not (Test-Path "$env:RUNNER_TEMP/t2-mean-quick-check/decision.json")) { throw 'Missing completed frequency results' }
+
+          python -X utf8 -m experiments.mean_scales --run-dir "$env:RUNNER_TEMP/t2-mean-quick-check"
+          if ($LASTEXITCODE -ne 0) { throw 'Fixed-scale replay failed' }
