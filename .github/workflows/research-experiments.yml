@@ -27,8 +27,8 @@ jobs:
           python -m pip install "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.4.4.tar.gz#subdirectory=common"
       - name: Validate research tests and notebook structure
         run: |
-          python -m ruff check experiments tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py tests/test_adaptive_experiments.py tests/test_ablation_experiments.py
-          python -m pytest -q tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py tests/test_adaptive_experiments.py tests/test_ablation_experiments.py
+          python -m ruff check experiments tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py tests/test_adaptive_experiments.py tests/test_ablation_experiments.py tests/test_suite_experiments.py
+          python -m pytest -q tests/test_research_experiments.py tests/test_frequency_experiments.py tests/test_joint_experiments.py tests/test_adaptive_experiments.py tests/test_ablation_experiments.py tests/test_suite_experiments.py
           python -c 'import nbformat; n=nbformat.read("experiments/results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
       - name: Validate frequency notebook
         run: python -c 'import nbformat; n=nbformat.read("experiments/frequency-results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
@@ -60,3 +60,16 @@ jobs:
           powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-ablation-windows.ps1" -Phase benchmark -RunDir "$env:RUNNER_TEMP/t2-windows-ablation-benchmark"
           if ($LASTEXITCODE -ne 0) { throw 'Windows ablation benchmark failed' }
           if (-not (Test-Path "$env:RUNNER_TEMP/t2-windows-ablation-benchmark/effect_summary.csv")) { throw 'No paired effects written' }
+      - name: Validate suite notebook
+        run: python -c 'import nbformat; n=nbformat.read("experiments/suite-results.ipynb",as_version=4); nbformat.validate(n); assert all(not c.get("outputs") for c in n.cells)'
+      - name: Exercise real Windows suite launcher on explored-date quick check
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/experiments/run-suite-windows.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count) { throw ($parseErrors | Out-String) }
+          powershell -ExecutionPolicy Bypass -File "$PWD/experiments/run-suite-windows.ps1" -Phase benchmark -QuickCheck -RunDir "$env:RUNNER_TEMP/t2-windows-suite-quick-check"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows suite quick check failed' }
+          if (-not (Test-Path "$env:RUNNER_TEMP/t2-windows-suite-quick-check/shortlist.json")) { throw 'No frozen shortlist written' }
