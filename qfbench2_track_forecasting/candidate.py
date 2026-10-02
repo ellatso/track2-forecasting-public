@@ -1,6 +1,6 @@
 """## Executive summary (read this first)
 
-Emit the fixed half-drift, 50% variance-mixture daily research candidate through
+Emit the AR120 mean-blend, 50% variance-mixture daily research candidate through
 the competition forecast interface. Preserve monthly baseline sampling and keys.
 Use no House calls or learned model artifacts. Write all outputs beside --out.
 """
@@ -18,6 +18,7 @@ import pandas as pd
 from . import cli
 from .horizons import HorizonMetadataError
 from .limits import ParseLimits
+from .mean_blend import apply_daily_mean_blend
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -64,6 +65,17 @@ def main(argv: list[str] | None = None) -> int:
     except HorizonMetadataError as exc:
         raise SystemExit(str(exc)) from None
     monthly = steps is not None
+    if not monthly:
+        samples, applied = apply_daily_mean_blend(
+            samples,
+            panels,
+            assets,
+            horizons,
+            args.asof,
+            stats,
+            targets.get("target_type", "level"),
+        )
+        stats["mean_blend_assets"] = applied
     if not np.isfinite(samples).all():
         raise SystemExit("nonfinite forecast")
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +88,9 @@ def main(argv: list[str] | None = None) -> int:
         )
     ).to_parquet(args.out, index=False)
     method = (
-        "unchanged monthly baseline" if monthly else "half drift, sample/EWMA60 variance mix 0.5"
+        "unchanged monthly baseline"
+        if monthly
+        else "AR120 mean blend 0.5, sample/EWMA60 variance mix 0.5"
     )
     meta = dict(
         unit_id=card["task"]["id"],
@@ -97,7 +111,9 @@ def main(argv: list[str] | None = None) -> int:
         "# Forecast rationale\n\n## Executive summary (read this first)\n\n"
         f"As-of {args.asof}. {draws} joint samples, seed {args.seed}. Method: {method}.\n\n"
         "Daily forecasts use at most 300 observations per asset, half the mean increment, "
-        "and the square root of an equal mixture of sample variance and exponentially "
+        "then blend that conditional mean equally with an AR120 mean. Series with "
+        "large recent gaps retain the original mean. Noise uses an equal mixture "
+        "of sample variance and exponentially "
         "weighted variance with a 60-observation half-life. Empirical correlation is "
         "preserved with a numerical positive-definite repair. All horizons share a "
         "coherent cumulative path. Factor targets sum log(1 + simple return).\n\n"
