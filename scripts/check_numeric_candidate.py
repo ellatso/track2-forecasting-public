@@ -20,7 +20,7 @@ def main():
     for name in ("MODEL_ENDPOINT", "MODEL_TOKEN", "MODEL_NAME"):
         os.environ.pop(name, None)
     passed, failures = 0, []
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--units", type=Path, default=root / "units")
     args = parser.parse_args()
