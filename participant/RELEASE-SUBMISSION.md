@@ -3,6 +3,11 @@
 This candidate keeps the precision/monthly-trend forecast and adds eligible
 published monthly observations from the current unit's dated BLS corpus.
 It does not change daily forecasts or calibrate a new distribution.
+
+**Not recommended as another Development upload.** In the published roster,
+the two eligible cards are `public-dev`; all `validation` predictions match
+the previous precision/monthly-trend image. This branch is a tested input
+improvement for research and later inputs, not an established board improvement.
 See `ARTIFACT_PROVENANCE.md` for interpretation and limitations.
 
 After the image workflow passes and the descriptor is pinned, run
