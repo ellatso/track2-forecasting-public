@@ -235,6 +235,7 @@ def _draw(
     panel_steps: np.ndarray | None = None,
     drift_factor: float = 1.0,
     variance_mix: float = 0.0,
+    sampling: str = "pseudo",
 ) -> tuple[np.ndarray, dict[str, Any]]:
     """Joint Gaussian walk, using level changes or daily log returns as steps.
 
@@ -304,6 +305,14 @@ def _draw(
         norm = np.sqrt(np.diag(corr))
         corr /= np.outer(norm, norm)
     chol = np.linalg.cholesky(corr)
+    if sampling != "pseudo":
+        from .sampling import InnovationSampler
+
+        intervals = len(horizons)
+        if monthly:
+            anchors = np.array([s.index[-1].ordinal for s in hist.values()])
+            intervals = int((anchors[:, None] + panel_steps).max() - anchors.min())
+        rng = InnovationSampler(seed, n_draws, len(assets), intervals, sampling)
 
     if monthly:
         panel_steps = cast(np.ndarray, panel_steps)
