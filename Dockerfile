@@ -40,6 +40,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # client and no extra apt layer.
 RUN pip install --no-cache-dir \
         "numpy==2.1.3" \
+        "scipy==1.15.3" \
         "pandas==2.2.3" \
         "pyarrow==18.1.0" \
         "jsonschema==4.23.0" \
