@@ -2,8 +2,8 @@
 name: Numeric trial packaging
 on:
   push:
-    branches: [submission/t2-halfdrift-mix50]
-    paths: ['participant/pack-halfdrift-windows.ps1', 'participant/submission-dev.template.json']
+    branches: [submission/t2-precision-monthly50]
+    paths: ['participant/pack-precision-windows.ps1', 'participant/submission-dev.template.json']
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,7 +21,7 @@ jobs:
           $syntaxErrors = $null
           $syntaxTokens = $null
           [System.Management.Automation.Language.Parser]::ParseFile(
-            "$PWD/participant/pack-halfdrift-windows.ps1",
+            "$PWD/participant/pack-precision-windows.ps1",
             [ref]$syntaxTokens, [ref]$syntaxErrors) | Out-Null
           if ($syntaxErrors.Count -gt 0) { throw ($syntaxErrors | Out-String) }
       - name: Install official packer
