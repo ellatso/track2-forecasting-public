@@ -19,6 +19,7 @@ requires-python = ">=3.13"
 # is sometimes not there.
 dependencies = [
   "numpy>=2.1",
+  "scipy==1.15.3",
   "pandas>=2.2",
   "pyarrow>=18",
   "jsonschema>=4.21",
