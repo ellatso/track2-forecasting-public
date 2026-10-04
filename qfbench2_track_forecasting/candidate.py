@@ -1,7 +1,8 @@
 """## Executive summary (read this first)
 
-Emit the fixed half-drift, 50% variance-mixture daily research candidate through
-the competition forecast interface. Preserve monthly baseline sampling and keys.
+Emit the precision and monthly-trend candidate through
+the competition forecast interface. Use 4096 Sobol draws and a half-strength monthly trend.
+Preserve horizon keys.
 Use no House calls or learned model artifacts. Write all outputs beside --out.
 """
 
@@ -18,6 +19,7 @@ import pandas as pd
 from . import cli
 from .horizons import HorizonMetadataError
 from .limits import ParseLimits
+from .monthly_trend import adjust_monthly_mean
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -40,10 +42,11 @@ def main(argv: list[str] | None = None) -> int:
     targets = card["targets"]
     assets, horizons = list(targets["asset_ids"]), list(targets["horizons"])
     draws = max(
-        args.n_draws or 1000,
-        1000,
+        args.n_draws or 4096,
+        4096,
         int(card.get("scoring", {}).get("params", {}).get("n_draws_min", 200)),
     )
+    draws = 1 << (draws - 1).bit_length()
     if draws > ParseLimits().max_draws:
         raise SystemExit("draw count exceeds contract ceiling")
     panels = cli._read_panels(args.panels)
@@ -60,10 +63,16 @@ def main(argv: list[str] | None = None) -> int:
             panel_steps=steps,
             drift_factor=0.5,
             variance_mix=0.5,
+            sampling="sobol",
         )
     except HorizonMetadataError as exc:
         raise SystemExit(str(exc)) from None
     monthly = steps is not None
+    if monthly:
+        samples, ledger = adjust_monthly_mean(
+            samples, panels, assets, steps, args.asof, stats, strength=0.5
+        )
+        stats["monthly_trend_ledger"] = ledger
     if not np.isfinite(samples).all():
         raise SystemExit("nonfinite forecast")
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -76,7 +85,9 @@ def main(argv: list[str] | None = None) -> int:
         )
     ).to_parquet(args.out, index=False)
     method = (
-        "unchanged monthly baseline" if monthly else "half drift, sample/EWMA60 variance mix 0.5"
+        "monthly half-strength damped trend, Sobol4096"
+        if monthly
+        else "half drift, sample/EWMA60 variance mix 0.5, Sobol4096"
     )
     meta = dict(
         unit_id=card["task"]["id"],
@@ -101,7 +112,10 @@ def main(argv: list[str] | None = None) -> int:
         "weighted variance with a 60-observation half-life. Empirical correlation is "
         "preserved with a numerical positive-definite repair. All horizons share a "
         "coherent cumulative path. Factor targets sum log(1 + simple return).\n\n"
-        "Monthly forecasts retain the original sample variance and full drift, with "
+        "Monthly forecasts retain the original covariance and blend the full-drift "
+        "centre equally with a trend fitted to the last 12 consecutive observations, "
+        "damped with a 12-month half-life. The sampling uses scrambled Sobol points "
+        "in a full power-of-two design. It uses "
         "explicit observation counts and publication lag. Authored horizon keys are "
         "preserved. Rows after the requested as-of date never enter estimation.\n\n"
         "The text corpus is not used. No model API call or learned model artifact is "
