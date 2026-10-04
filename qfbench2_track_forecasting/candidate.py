@@ -1,6 +1,6 @@
 """## Executive summary (read this first)
 
-Emit the precision and monthly-trend candidate through
+Emit the release-aware precision and monthly-trend candidate through
 the competition forecast interface. Use 4096 Sobol draws and a half-strength monthly trend.
 Preserve horizon keys.
 Use no House calls or learned model artifacts. Write all outputs beside --out.
@@ -20,6 +20,7 @@ from . import cli
 from .horizons import HorizonMetadataError
 from .limits import ParseLimits
 from .monthly_trend import adjust_monthly_mean
+from .release_inputs import augment
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,8 +51,17 @@ def main(argv: list[str] | None = None) -> int:
     if draws > ParseLimits().max_draws:
         raise SystemExit("draw count exceeds contract ceiling")
     panels = cli._read_panels(args.panels)
+    release_ledger = []
     try:
         steps = cli._monthly_inputs(panels, card, card_path, args.asof)
+        if steps is not None:
+            augmented, proposed_ledger = augment(panels, assets, steps, args.text, args.asof)
+            if proposed_ledger:
+                proposed_steps = cli._monthly_inputs(augmented, card, card_path, args.asof)
+                changed = {entry["asset"] for entry in proposed_ledger}
+                expected = steps - np.array([int(a in changed) for a in assets])[:, None]
+                if np.array_equal(proposed_steps, expected):
+                    panels, steps, release_ledger = augmented, proposed_steps, proposed_ledger
         samples, stats = cli._draw(
             panels,
             assets,
@@ -73,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
             samples, panels, assets, steps, args.asof, stats, strength=0.5
         )
         stats["monthly_trend_ledger"] = ledger
+        stats["published_release_ledger"] = release_ledger
     if not np.isfinite(samples).all():
         raise SystemExit("nonfinite forecast")
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -98,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         n_draws=draws,
         target=targets.get("target_type", "level"),
         reasoning_applied=False,
+        published_observations_added=len(release_ledger),
         house_requests_attempted=0,
         rationale=dict(file="forecast_rationale.md", method=method),
     )
@@ -118,7 +130,12 @@ def main(argv: list[str] | None = None) -> int:
         "in a full power-of-two design. It uses "
         "explicit observation counts and publication lag. Authored horizon keys are "
         "preserved. Rows after the requested as-of date never enter estimation.\n\n"
-        "The text corpus is not used. No model API call or learned model artifact is "
+        "For monthly CPI and unemployment, a dated BLS release in this unit's corpus "
+        "may supply the next missing monthly observation. It must have been published "
+        "by the cutoff and precede every target endpoint. Monthly CPI percent changes "
+        "are converted to an approximate index using the previous panel level. "
+        "The ledger records exact quotes, dates and interpretation. "
+        "No model API call or learned model artifact is "
         "used. This is a numeric-only official trial of a fixed research candidate, "
         "not a claim of accuracy from local admissibility gates.\n\n"
         "## Numerical statistics\n\n```json\n" + json.dumps(stats, indent=2) + "\n```\n"
