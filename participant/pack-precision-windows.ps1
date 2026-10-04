@@ -17,7 +17,8 @@ if (-not (Test-Path -LiteralPath $Template)) {
     throw "Template not found: $Template. Check out the submission/t2-precision-monthly50 branch."
 }
 $ModelDescriptor = Get-Content -LiteralPath $Template -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($ModelDescriptor.image.repository -ne 'ellatso/agenthon-t2' -or
+if ($ModelDescriptor.image.digest -ne 'sha256:fbe72adcf316297de6db81f1929e9e7a5583499fb6e5fa411f10b20f699c5b4f' -or
+    $ModelDescriptor.image.repository -ne 'ellatso/agenthon-t2' -or
     @($ModelDescriptor.models).Count -ne 0 -or
     $ModelDescriptor.category -ne 'api') {
     throw 'Wrong descriptor: this trial requires the pinned numeric-only candidate.'
