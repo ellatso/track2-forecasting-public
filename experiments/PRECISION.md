@@ -1,0 +1,7 @@
+## Executive summary (read this first)
+
+Compare the current 1,000-draw production distribution with 4,096 pseudo-random, antithetic and scrambled Sobol draws. Daily centers include zero, quarter and half drift. Monthly means include a half or full blend with a 12-observation trend damped with a 12-month half-life, and recent average changes. Every arm uses fixed seeds 0, 17, 41, 73 and 101.
+
+Run `python -m experiments.precision --run-dir ../private-precision-results` from this branch. Keep results outside the repository. The documented M0 distribution is reconstructed for historical pseudo-cases with sorted cells, raw return steps, 500 draws and CRC seeds. This is a method replica, not access to organizer scales or a bit-exact verification against sealed outputs. Both clipped per-case normalized scores and a separate pooled-scale diagnostic are retained. Source and input hashes are recorded.
+
+Origins within seven days of a published practice cutoff for the same assets are excluded. No practice answer is looked up, packaged or used to pick per-unit predictions. Previously explored origins remain diagnostics. Monthly series are observation-index snapshots without historical release vintages, so their historical results do not establish causal real-time OOS performance. A new Docker trial requires separate admissibility tests and an official upload; these results cannot promise any leaderboard score.
