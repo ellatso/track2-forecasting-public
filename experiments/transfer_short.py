@@ -14,8 +14,8 @@ import pandas as pd
 from qfbench2_track_forecasting import scoring
 from qfbench2_track_forecasting.short_horizon import ew_cov, predict
 
-from .m0_scale import distribution, normal_scales
 from .final_study import frames
+from .m0_scale import distribution, normal_scales
 
 
 def main():

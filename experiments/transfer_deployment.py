@@ -14,8 +14,8 @@ import pandas as pd
 from qfbench2_track_forecasting import cli, scoring
 from qfbench2_track_forecasting.daily_candidate import estimate
 
-from .expected_scale import distribution, normal_scales
 from .final_study import frames
+from .m0_scale import distribution, normal_scales
 
 
 def main():
