@@ -39,6 +39,9 @@ def main():
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--start", default="2006-01-05")
     p.add_argument("--end", default="2014-12-02")
+    p.add_argument(
+        "--target-end", help="Latest outcome date; defaults to the origin end-year close"
+    )
     p.add_argument("--stride", type=int, default=35)
     p.add_argument("--draws", type=int, default=1024)
     p.add_argument("--seeds", default="0")
@@ -64,6 +67,7 @@ def main():
             )
         )
     rows = []
+    target_end = pd.Timestamp(a.target_end or f"{pd.Timestamp(a.end).year}-12-31")
     (a.out / "plan.json").write_text(
         json.dumps(
             dict(
@@ -76,6 +80,7 @@ def main():
                 horizons=[21, 63, 126],
                 gaps=[2, 5, 10],
                 rankable=False,
+                target_end=str(target_end.date()),
             ),
             indent=2,
         )
@@ -109,6 +114,8 @@ def main():
                 context_sd = float(np.median(np.sqrt(np.diag(ew_cov(recent, 20)))))
                 for h in [21, 63, 126]:
                     end = dates[i] + pd.offsets.BDay(h)
+                    if end > target_end:
+                        continue
                     target = dates.get_indexer([end])[0]
                     if target < 0 or any(
                         asset in assets and dates[i] <= hi and end >= lo
@@ -139,6 +146,7 @@ def main():
                             rows.append(
                                 dict(
                                     origin=str(dates[i].date()),
+                                    end=str(end.date()),
                                     asset=asset,
                                     gap=gap,
                                     horizon=h,

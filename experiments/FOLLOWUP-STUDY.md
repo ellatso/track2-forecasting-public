@@ -29,6 +29,10 @@ python -m experiments.long_gap_followup --official ../official-kit --out ../priv
 
 Use `--start 2015-01-05 --end 2019-12-02 --draws 4096 --seeds 0,17`
 for confirmation. Pass a JSON list of explicit configurations with `--configs`.
+The outcome cutoff defaults to December 31 of the last origin year. Use
+`--target-end` to set it explicitly, preventing long forecasts from crossing
+into the next selection period. The frozen factor comparison uses origins
+2020-01-06 through 2023-11-01 and `--target-end 2024-05-31`.
 The selected factor pair is `v9_t0_d0.5` (vol=v9, df=0, drift=0.5, window=300)
 and `garch_t8_d0.5` (vol=garch, df=8, drift=0.5, window=300).
 `--production` runs this pair through the real CLI fallback and factor module.

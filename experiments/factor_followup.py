@@ -54,7 +54,7 @@ def score(samples, y, scales):
 
 
 def worker(task):
-    name, frame, exclusions, origins, cfgs, draws, seeds, production = task
+    name, frame, exclusions, origins, cfgs, draws, seeds, production, target_end = task
     data, dates = frame.to_numpy(), frame.index
     rows = []
     for counter, origin in enumerate(origins):
@@ -73,6 +73,8 @@ def worker(task):
             )
         for h in [7, 21, 63, 126]:
             end = asof + pd.offsets.BDay(h)
+            if end > target_end:
+                continue
             endpoint = dates.get_indexer([end])[0]
             if endpoint < 0 or any(asof <= hi and end >= lo for lo, hi in exclusions):
                 continue
@@ -130,6 +132,9 @@ def main():
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--start", default="2003-01-06")
     p.add_argument("--end", default="2014-12-01")
+    p.add_argument(
+        "--target-end", help="Latest outcome date; defaults to the origin end-year close"
+    )
     p.add_argument("--stride", type=int, default=42)
     p.add_argument("--draws", type=int, default=1024)
     p.add_argument("--seeds", default="0")
@@ -149,6 +154,7 @@ def main():
     groups["joint"] = ["MKT", "SMB", "HML", "MOM", "BAB", "QMJ"]
     tasks = []
     origins = pd.bdate_range(a.start, a.end)[:: a.stride]
+    target_end = pd.Timestamp(a.target_end or f"{pd.Timestamp(a.end).year}-12-31")
     for name, assets in groups.items():
         exclude = []
         for path in (a.official / "units").glob("*/card.toml"):
@@ -172,6 +178,7 @@ def main():
                 a.draws,
                 list(map(int, a.seeds.split(","))),
                 a.production,
+                target_end,
             )
         )
     (a.out / "plan.json").write_text(
@@ -186,6 +193,7 @@ def main():
                 source=str(source),
                 rankable=False,
                 production=a.production,
+                target_end=str(target_end.date()),
                 excludes_practice_target_windows=True,
             ),
             indent=2,
