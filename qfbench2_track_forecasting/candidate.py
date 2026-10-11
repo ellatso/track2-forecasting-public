@@ -18,6 +18,7 @@ import pandas as pd
 
 from . import cli
 from .daily_candidate import estimate as daily_estimate
+from .factor_candidate import estimate as factor_estimate
 from .horizons import HorizonMetadataError
 from .limits import ParseLimits
 from .monthly_trend import adjust_monthly_mean
@@ -70,6 +71,11 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(str(exc)) from None
     monthly = steps is not None
     daily_ledger = None
+    if not monthly and targets.get("target_type") == "log_return":
+        samples, daily_ledger = factor_estimate(
+            panels, assets, horizons, args.asof, draws, args.seed
+        )
+        stats["daily_adaptation"] = daily_ledger
     if not monthly and targets.get("target_type", "level") == "level":
         proposed = daily_estimate(panels, assets, horizons, args.asof, draws, args.seed)
         if proposed is not None:

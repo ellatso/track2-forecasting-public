@@ -3,7 +3,8 @@
 Apply the frozen daily policy to this card's own dated panels. Short-rate forecasts
 retain V9. Short FX forecasts mix V9 with an EWMA20 Student-t distribution. A
 missing-middle FX history can adapt its scale from other current FX series in this
-same input. Preserve authored horizons and fall back on unsupported card types.
+same input, including long horizons with Student-t8 paths. Preserve authored
+horizons and fall back on unsupported card types.
 """
 
 from __future__ import annotations
@@ -54,7 +55,7 @@ def estimate(panels, assets, horizons, asof, draws, seed):
         "anchor": {a: float(anchor[j]) for j, a in enumerate(assets)},
     }
     if stale:
-        if not fx or max(horizons) > 12:
+        if not fx:
             return None
         if any((s <= 0).any() for s in hist.values()):
             return None
@@ -92,9 +93,12 @@ def estimate(panels, assets, horizons, asof, draws, seed):
                 used.append(asset)
         ratio = float(np.clip(np.median(ratios), 0.25, 4.0)) if len(ratios) >= 2 else 1.0
         cfg = {"vol": "v9", "drift": 0.0, "width": float(np.sqrt(0.5 + 0.5 * ratio))}
+        if max(horizons) > 12:
+            cfg["df"] = 8
         samples = predict(logchanges, anchor, sorted_h, cfg, draws, seed)
         ledger.update(
-            method="gap-safe FX rescaling with 50% context adaptation",
+            method="gap-safe FX rescaling with 50% context adaptation"
+            + (", t8" if max(horizons) > 12 else ""),
             context_assets=used,
             context_variance_ratio=ratio,
             configuration=cfg,

@@ -15,6 +15,8 @@ Public source: Agenthon-2026/track2-forecasting-public, commit
 panel licenses remain those in the source manifest and THIRD-PARTY-NOTICES.
 Research used the rates panel in `t2-F1-hawkish-cut-2024` (through 2024-12-18)
 and the G10 FX panel in `t2-F3-election-2024-joint` (through 2024-10-31).
+The V12 follow-up also uses the factor panel in `t2-F1-ai-mom-2024`
+(through 2024-05-31), under its original French/AQR source licenses.
 No panels are included in the image. Synthetic historical origins were chosen on
 fixed business-day schedules; every prediction received only its historical prefix.
 Short-horizon comparisons excluded windows overlapping published practice target
@@ -48,10 +50,32 @@ covered by the organizer's Track 2 issue 24 ruling, subject to this disclosure.
   log changes rescaled to that anchor. Mix the old variance equally with its
   adaptation by the median current/old variance ratio of at least two other FX
   series from the same input, ratio clipped to [0.25,4]. No stale context is used.
-- Retain V9 for monthly, return and unsupported mixed-domain targets. Monthly
+- V12 extends that missing-middle FX rule to long horizons, with Student-t8
+  full-path noise. No cross-currency volatility floor is applied. The follow-up
+  creates synthetic missing-middle G10 histories with 2-, 5- and 10-year gaps;
+  transfer to emerging-market currencies remains an extrapolation.
+- For cumulative return targets, V12 transforms each simple return with log1p,
+  keeps a zero anchor and half-strength trailing drift, and uses the same GARCH
+  recursion with Student-t8 paths. The aligned history contains at most 300 rows.
+- Retain V9 for monthly and unsupported mixed-domain targets. Monthly
   horizons continue to use explicit observation periods and publication lag.
 - No card id, title, difficulty or design note selects forecasts. No document is
   read and no House call is made. Rationale states the exact numerical policy.
+
+## V12 follow-up validation scope
+
+The factor and long-gap studies exclude every historical forecast interval that
+overlaps a published practice target for the forecasted asset. They keep seeds,
+draw counts and mean settings fixed within volatility comparisons. Drift is
+examined separately. Selection uses 2003/2006-2014 training and 2015-2019
+confirmation; the selected pair is locked before the 2020-2024 comparison.
+Those calendar years were explored before and are not a pristine holdout.
+The factor follow-up also runs the actual production entry functions against
+the original production fallback. No accuracy result is inferred from gates.
+These V12 changes primarily affect Development's long horizons and factor
+targets. The short UST/G10 policies are unchanged; no incremental Final gain
+is claimed from these changes. Text-derived policy adjustments were inspected
+but are not enabled without forecast-quality validation.
 
 ## Software
 
