@@ -9,7 +9,7 @@ import numpy as np
 from qfbench2_common.scoring import crps
 from scipy.special import ndtri
 
-from experiments.expected_scale import normal_scales
+from experiments.m0_scale import normal_scales
 from qfbench2_track_forecasting.short_horizon import predict
 
 

@@ -22,7 +22,7 @@ import pandas as pd
 from qfbench2_track_forecasting import scoring
 from qfbench2_track_forecasting.short_horizon import predict
 
-from .expected_scale import distribution, normal_scales
+from .m0_scale import distribution, normal_scales
 
 ROOT = Path(__file__).resolve().parents[1]
 HORIZONS = [2, 5, 10, 12]
