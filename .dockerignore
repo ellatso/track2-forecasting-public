@@ -1,0 +1,9 @@
+# Executive summary: build only the forecaster; exclude panels and research outputs.
+.git
+units
+experiments
+outputs
+recovered
+*.zip
+__pycache__
+.pytest_cache
