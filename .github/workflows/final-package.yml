@@ -1,0 +1,55 @@
+# Executive summary: validate the Windows entry point and official Dev/Final ZIP contracts.
+name: V11 Windows submission packaging
+on:
+  push:
+    branches: [submission/t2-final-short-horizon]
+    paths: ['participant/pack-v11-windows.ps1', '.github/workflows/final-package.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-pack:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          $tokens = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/participant/pack-v11-windows.ps1", [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+      - name: Install pinned official toolkit
+        run: python -m pip install "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.6.0.tar.gz#subdirectory=common"
+      - name: Pack both phases with ephemeral synthetic credentials
+        shell: python
+        run: |
+          import hashlib, hmac, json, pathlib, re, secrets, tempfile, zipfile
+          from qfbench2_common.team_claim import pack_submission
+          script=pathlib.Path('participant/pack-v11-windows.ps1').read_text(encoding='utf-8')
+          match=re.search(r"\$Body = @'\n(.*?)\n'@", script, re.S)
+          body=json.loads(match.group(1))
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}',body['image']['digest'])
+          assert body['models']==[] and body['category']=='api'
+          for phase in ['dev','final']:
+              descriptor=dict(body,phase=phase,competition_id='agenthon2026-forecasting-'+phase)
+              key=secrets.token_hex(32)
+              with tempfile.TemporaryDirectory() as temp:
+                  archive=pathlib.Path(temp)/'submission.zip'
+                  pack_submission(descriptor,1,key,archive)
+                  with zipfile.ZipFile(archive) as z:
+                      assert set(z.namelist())=={'submission.json','team-claim.json'}
+                      raw=z.read('submission.json');sealed=json.loads(raw);claim=json.loads(z.read('team-claim.json'))
+                      assert sealed['phase']==phase and sealed['image']==body['image']
+                      assert sealed['competition_id']=='agenthon2026-forecasting-'+phase
+                      assert key.encode() not in raw and key.encode() not in z.read('team-claim.json')
+                      digest=hashlib.sha256(raw).hexdigest()
+                      assert claim['descriptor_sha256']==digest and claim['schema_version']=='2.0'
+                      proof_key=hashlib.sha256(b'agenthon2026-team-proof-key:v2:'+key.encode()).digest()
+                      message=b'agenthon2026-team-claim:v2:1:'+digest.encode()
+                      assert hmac.compare_digest(claim['proof'],hmac.new(proof_key,message,hashlib.sha256).hexdigest())
+          print('Both phase contracts and descriptor-bound claims verified with synthetic credentials.')
