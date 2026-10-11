@@ -1,6 +1,6 @@
 """## Executive summary (read this first)
 
-Emit the precision and monthly-trend candidate through
+Emit the frozen short-horizon and gap-adaptive candidate through
 the competition forecast interface. Use 4096 Sobol draws and a half-strength monthly trend.
 Preserve horizon keys.
 Use no House calls or learned model artifacts. Write all outputs beside --out.
@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from . import cli
+from .daily_candidate import estimate as daily_estimate
 from .horizons import HorizonMetadataError
 from .limits import ParseLimits
 from .monthly_trend import adjust_monthly_mean
@@ -68,6 +69,12 @@ def main(argv: list[str] | None = None) -> int:
     except HorizonMetadataError as exc:
         raise SystemExit(str(exc)) from None
     monthly = steps is not None
+    daily_ledger = None
+    if not monthly and targets.get("target_type", "level") == "level":
+        proposed = daily_estimate(panels, assets, horizons, args.asof, draws, args.seed)
+        if proposed is not None:
+            samples, daily_ledger = proposed
+            stats["daily_adaptation"] = daily_ledger
     if monthly:
         samples, ledger = adjust_monthly_mean(
             samples, panels, assets, steps, args.asof, stats, strength=0.5
@@ -89,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         if monthly
         else "half drift, sample/EWMA60 variance mix 0.5, Sobol4096"
     )
+    if daily_ledger is not None:
+        method = daily_ledger["method"] + ", Sobol4096"
     meta = dict(
         unit_id=card["task"]["id"],
         asof=args.asof,
@@ -107,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     text = (
         "# Forecast rationale\n\n## Executive summary (read this first)\n\n"
         f"As-of {args.asof}. {draws} joint samples, seed {args.seed}. Method: {method}.\n\n"
-        "Daily forecasts use at most 300 observations per asset, half the mean increment, "
+        "The V9 fallback uses at most 300 observations per asset, half the mean increment, "
         "and the square root of an equal mixture of sample variance and exponentially "
         "weighted variance with a 60-observation half-life. Empirical correlation is "
         "preserved with a numerical positive-definite repair. All horizons share a "
@@ -118,6 +127,10 @@ def main(argv: list[str] | None = None) -> int:
         "in a full power-of-two design. It uses "
         "explicit observation counts and publication lag. Authored horizon keys are "
         "preserved. Rows after the requested as-of date never enter estimation.\n\n"
+        "The daily-adaptation ledger below overrides the fallback when present. "
+        "Its conditional variance, zero-drift and Student-t mixture settings are "
+        "reported explicitly. Other currency series are read only from this unit's "
+        "own panels, and never beyond the as-of date. "
         "The text corpus is not used. No model API call or learned model artifact is "
         "used. This is a numeric-only official trial of a fixed research candidate, "
         "not a claim of accuracy from local admissibility gates.\n\n"
