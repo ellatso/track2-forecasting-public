@@ -24,6 +24,42 @@ from .limits import ParseLimits
 from .monthly_trend import adjust_monthly_mean
 
 
+def numeric_forecast(panels, card, card_path, asof, draws, seed):
+    """Share the complete V12 numeric policy without writing an intermediate file."""
+    targets = card["targets"]
+    assets, horizons = list(targets["asset_ids"]), list(targets["horizons"])
+    steps = cli._monthly_inputs(panels, card, card_path, asof)
+    samples, stats = cli._draw(
+        panels,
+        assets,
+        horizons,
+        asof,
+        draws,
+        seed,
+        target_type=targets.get("target_type", "level"),
+        panel_steps=steps,
+        drift_factor=0.5,
+        variance_mix=0.5,
+        sampling="sobol",
+    )
+    monthly = steps is not None
+    daily_ledger = None
+    if not monthly and targets.get("target_type") == "log_return":
+        samples, daily_ledger = factor_estimate(panels, assets, horizons, asof, draws, seed)
+        stats["daily_adaptation"] = daily_ledger
+    if not monthly and targets.get("target_type", "level") == "level":
+        proposed = daily_estimate(panels, assets, horizons, asof, draws, seed)
+        if proposed is not None:
+            samples, daily_ledger = proposed
+            stats["daily_adaptation"] = daily_ledger
+    if monthly:
+        samples, ledger = adjust_monthly_mean(
+            samples, panels, assets, steps, asof, stats, strength=0.5
+        )
+        stats["monthly_trend_ledger"] = ledger
+    return samples, stats, monthly, daily_ledger
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="forecast", description=__doc__)
     parser.add_argument("--panels", type=Path, required=True)
@@ -53,39 +89,11 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("draw count exceeds contract ceiling")
     panels = cli._read_panels(args.panels)
     try:
-        steps = cli._monthly_inputs(panels, card, card_path, args.asof)
-        samples, stats = cli._draw(
-            panels,
-            assets,
-            horizons,
-            args.asof,
-            draws,
-            args.seed,
-            target_type=targets.get("target_type", "level"),
-            panel_steps=steps,
-            drift_factor=0.5,
-            variance_mix=0.5,
-            sampling="sobol",
+        samples, stats, monthly, daily_ledger = numeric_forecast(
+            panels, card, card_path, args.asof, draws, args.seed
         )
     except HorizonMetadataError as exc:
         raise SystemExit(str(exc)) from None
-    monthly = steps is not None
-    daily_ledger = None
-    if not monthly and targets.get("target_type") == "log_return":
-        samples, daily_ledger = factor_estimate(
-            panels, assets, horizons, args.asof, draws, args.seed
-        )
-        stats["daily_adaptation"] = daily_ledger
-    if not monthly and targets.get("target_type", "level") == "level":
-        proposed = daily_estimate(panels, assets, horizons, args.asof, draws, args.seed)
-        if proposed is not None:
-            samples, daily_ledger = proposed
-            stats["daily_adaptation"] = daily_ledger
-    if monthly:
-        samples, ledger = adjust_monthly_mean(
-            samples, panels, assets, steps, args.asof, stats, strength=0.5
-        )
-        stats["monthly_trend_ledger"] = ledger
     if not np.isfinite(samples).all():
         raise SystemExit("nonfinite forecast")
     args.out.parent.mkdir(parents=True, exist_ok=True)

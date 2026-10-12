@@ -49,11 +49,11 @@ RUN pip install --no-cache-dir \
 
 WORKDIR /work
 COPY qfbench2_track_forecasting /opt/qfbench2_track_forecasting
-COPY ARTIFACT_PROVENANCE.md /opt/ARTIFACT_PROVENANCE.md
+COPY V13-PROVENANCE.md /opt/ARTIFACT_PROVENANCE.md
 ENV PYTHONPATH=/opt
 
 # The verb, as an executable on PATH.
-RUN printf '#!/bin/sh\nexec python3 -m qfbench2_track_forecasting.candidate "$@"\n' \
+RUN printf '#!/bin/sh\nexec python3 -m qfbench2_track_forecasting.text_candidate "$@"\n' \
       > /usr/local/bin/forecast \
  && chmod +x /usr/local/bin/forecast
 
