@@ -23,6 +23,8 @@ from qfbench2_track_forecasting import candidate, scoring, text_candidate
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--units", type=Path, required=True)
+    p.add_argument("--event-timing", action="store_true")
+    p.add_argument("--event-clock", choices=["date", "ecb-ust"], default="date")
     a = p.parse_args()
     for name in ["MODEL_ENDPOINT", "MODEL_TOKEN", "MODEL_NAME"]:
         os.environ.pop(name, None)
@@ -37,6 +39,9 @@ def main():
             try:
 
                 def run(entry, out, cp=cp, asof=asof):
+                    extra = []
+                    if entry is text_candidate.main and a.event_timing:
+                        extra = ["--event-timing", "--event-clock", a.event_clock]
                     with contextlib.redirect_stdout(io.StringIO()):
                         entry(
                             [
@@ -49,6 +54,7 @@ def main():
                                 "--out",
                                 str(out),
                             ]
+                            + extra
                         )
 
                 old, off = root / "numeric/forecast.parquet", root / "offline/forecast.parquet"

@@ -27,6 +27,9 @@ seconds. The ranked roster arrangement is still to be announced.
 - Supply `experiments/final_daily.py` for a reproducible source-consistent study.
   It reads local official downloads, uses the organizer's scoring functions, and
   excludes absent holiday targets and windows overlapping existing practice cards.
+- Supply opt-in cited event timing and explicit ECB/UST observation clocks, with
+  release-unit/vintage helpers. See [EVENT-RESEARCH.md](EVENT-RESEARCH.md). These
+  are research options; the Docker entry point and selected image are unchanged.
 
 ## Numeric experiment
 

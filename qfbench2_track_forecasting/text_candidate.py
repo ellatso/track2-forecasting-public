@@ -29,7 +29,13 @@ def main(argv=None):
     p.add_argument("--card", type=Path)
     p.add_argument("--n-draws", type=int)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument(
+        "--event-timing", action="store_true", help="Research cited event-date activation"
+    )
+    p.add_argument("--event-clock", choices=["date", "ecb-ust"], default="date")
     a = p.parse_args(argv)
+    if a.event_clock != "date" and not a.event_timing:
+        p.error("--event-clock requires --event-timing")
     card_path = a.card or next(
         (x for x in [a.panels / "card.toml", a.panels.parent / "card.toml"] if x.is_file()), None
     )
@@ -70,7 +76,14 @@ def main(argv=None):
             panels, assets, horizons, a.asof, base, targets
         )
         extract, quantify = text_scenarios.prompts(
-            assets, horizons, a.asof, targets.get("target_type", "level"), summary, selected
+            assets,
+            horizons,
+            a.asof,
+            targets.get("target_type", "level"),
+            summary,
+            selected,
+            event_timing=a.event_timing,
+            event_clock=a.event_clock,
         )
         evidence = agent.validate_evidence(house.ask(extract), selected, assets)
         if not evidence and house.requests == 1 and not house.failures:
@@ -81,14 +94,28 @@ def main(argv=None):
             )
         if evidence:
             reply = house.ask(quantify + json.dumps(evidence, ensure_ascii=False))
-            scenarios = text_scenarios.validate(reply, evidence, assets, horizons)
+            scenarios = text_scenarios.validate(
+                reply,
+                evidence,
+                assets,
+                horizons,
+                asof=a.asof if a.event_timing else None,
+                event_clock=a.event_clock,
+            )
             if not scenarios and house.requests < 3 and not house.failures:
                 reply = house.ask(
                     quantify
                     + json.dumps(evidence, ensure_ascii=False)
                     + "\nUse finite JSON numbers and verified evidence IDs only."
                 )
-                scenarios = text_scenarios.validate(reply, evidence, assets, horizons)
+                scenarios = text_scenarios.validate(
+                    reply,
+                    evidence,
+                    assets,
+                    horizons,
+                    asof=a.asof if a.event_timing else None,
+                    event_clock=a.event_clock,
+                )
         if scenarios:
             try:
                 samples = text_scenarios.apply(
@@ -136,6 +163,8 @@ def main(argv=None):
             documents_read=len(selected),
             documents_excluded=excluded,
             verified_evidence_count=len(evidence),
+            event_timing_enabled=a.event_timing,
+            event_clock=a.event_clock,
         ),
     )
     (a.out.parent / "forecast_meta.json").write_text(

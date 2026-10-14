@@ -76,6 +76,35 @@ def scenarios(shift=0.8):
     )
 
 
+def test_event_clock_cli_keeps_every_pre_event_draw_exact(unit, tmp_path, monkeypatch):
+    root, asof, _ = unit
+    date = str((pd.Timestamp(asof) + pd.offsets.BDay(3)).date())
+    quote = f"A decision is scheduled for {date} at 09:00 UTC. Its outcome is unknown."
+    (root / "text/doc.txt").write_text(quote)
+    (root / "card.toml").write_text(
+        '[task]\nid="synthetic"\n[targets]\nasset_ids=["UST_2Y"]\n'
+        'horizons=[4,1,3,2]\ntarget_type="level"\n'
+    )
+
+    def ask(self, prompt):
+        self.requests += 1
+        if self.requests == 1:
+            return reply(quote)
+        result = scenarios(0.4)
+        result["scenarios"][0]["assets"]["UST_2Y"].update(
+            activation_date=date, activation_time="09:00", activation_timezone="UTC"
+        )
+        return result
+
+    monkeypatch.setattr(text_candidate.House, "ask", ask)
+    old, new = tmp_path / "old/f.parquet", tmp_path / "new/f.parquet"
+    candidate.main(args(root, asof, old))
+    text_candidate.main(args(root, asof, new) + ["--event-timing", "--event-clock", "ecb-ust"])
+    before, after = (pd.read_parquet(p).value.to_numpy().reshape(4096, 1, 4) for p in [old, new])
+    np.testing.assert_array_equal(before[:, :, [1, 3]], after[:, :, [1, 3]])
+    assert np.sum((before == after).all(axis=(1, 2))) == 2048
+
+
 def test_absent_house_is_exact_v12_even_with_dated_docs(unit, tmp_path, monkeypatch):
     root, asof, _ = unit
     for name in ["MODEL_ENDPOINT", "MODEL_NAME", "MODEL_TOKEN"]:
