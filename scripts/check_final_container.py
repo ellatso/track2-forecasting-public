@@ -184,14 +184,6 @@ def container_command(image, unit, output, mode, timed=False):
         "QFBENCH_SEED=0",
         "-e",
         "QFBENCH_NETWORK=none",
-        "-e",
-        "OPENBLAS_NUM_THREADS=1",
-        "-e",
-        "OMP_NUM_THREADS=1",
-        "-e",
-        "MKL_NUM_THREADS=1",
-        "-e",
-        "NUMEXPR_NUM_THREADS=1",
         "-v",
         f"{unit}:/input:ro",
         "-v",
@@ -246,8 +238,19 @@ def host_main(image, units, output):
         or config.get("Labels", {}).get("qfbench2.interface_version") != "2.0"
     ):
         raise ValueError("Image is not a linux/amd64 interface-2.0 image without VOLUME")
+    thread_vars = {
+        "OPENBLAS_NUM_THREADS",
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+    }
     report = dict(
         image_id=inspection["Id"],
+        image_thread_settings={
+            key: value
+            for key, value in (item.split("=", 1) for item in config.get("Env", []))
+            if key in thread_vars
+        },
         live_house_quality_test=False,
         runtime="ordinary Docker; not organizer attestation",
         cases=[],

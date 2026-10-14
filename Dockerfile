@@ -24,7 +24,11 @@ LABEL qfbench2.verb=forecast
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
 
 # Pinned. The scorer's own CI was red for a week because a pinned type checker met an unpinned
 # numpy; a submission image that floats its deps has the same failure mode with worse timing.

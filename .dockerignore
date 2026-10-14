@@ -1,6 +1,7 @@
 # Executive summary: build only the forecaster; exclude panels and research outputs.
 .git
 units
+official-kit
 experiments
 outputs
 recovered

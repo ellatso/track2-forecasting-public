@@ -39,6 +39,10 @@ The 2-CPU/2-GiB limits are conservative test settings, not a statement of Final
 resource grants. Ordinary Docker does not reproduce an organizer sandbox,
 provisioning delays, image pulls, total-roster timing or live model latency.
 The image must be Linux/amd64, have interface label 2.0 and declare no VOLUME.
+Scientific-library thread limits are baked into this research image rather than
+injected only by the test runner. The report records those image settings. The
+official kit is excluded from the Docker build context as well as from its COPY
+instructions; it is mounted read-only only when running a test.
 
 ## HTTP and fallback cases
 
