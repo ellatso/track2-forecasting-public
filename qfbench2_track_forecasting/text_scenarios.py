@@ -18,7 +18,7 @@ from . import agent, cli
 from .daily_candidate import FX
 from .short_horizon import ew_cov
 
-# The original H.10 panel source reports these four as USD per foreign unit.
+# Both practice H.10 and the announced USD-converted Final ECB panels use these directions.
 USD_PER_UNIT = frozenset(["AUD", "EUR", "GBP", "NZD"])
 
 

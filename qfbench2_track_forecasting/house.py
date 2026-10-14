@@ -2,22 +2,56 @@
 
 Call only the injected House endpoint through its audited proxy. Responses are bounded,
 credentials never appear in errors, and at most three requests are made for one unit.
+Linux main-thread calls have a hard 90-second request deadline and share 180 seconds.
+Unavailable deadline support keeps the numeric fallback instead of risking a hang.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import signal
+import threading
+import time
+from contextlib import contextmanager
 from typing import Any
 from urllib.parse import urlsplit
 
 import requests
 
 
+class HouseDeadline(TimeoutError):
+    """The bounded House budget expired; use the existing numerical fallback."""
+
+
+@contextmanager
+def request_deadline(seconds):
+    """Bound slow streaming as well as connection delays in the Linux forecast CLI."""
+    if (
+        not hasattr(signal, "setitimer")
+        or threading.current_thread() is not threading.main_thread()
+        or signal.getitimer(signal.ITIMER_REAL)[0] > 0
+    ):
+        raise HouseDeadline("deadline support unavailable")
+    previous = signal.getsignal(signal.SIGALRM)
+
+    def expire(signum, frame):
+        raise HouseDeadline("deadline reached")
+
+    signal.signal(signal.SIGALRM, expire)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
 class House:
     def __init__(self) -> None:
         self.requests = 0
         self.failures: list[str] = []
+        self.deadline = time.monotonic() + 180
 
     def ask(self, prompt: str) -> dict[str, Any] | None:
         endpoint = os.environ.get("MODEL_ENDPOINT", "").rstrip("/")
@@ -49,6 +83,10 @@ class House:
         if self.requests >= 3:
             self.failures.append("local request ceiling reached")
             return None
+        remaining = min(90, self.deadline - time.monotonic())
+        if remaining <= 0:
+            self.failures.append("local time budget exhausted")
+            return None
         url = endpoint + ("/chat/completions" if route.path == "/v1" else "/v1/chat/completions")
         body = {
             "model": model,
@@ -71,14 +109,14 @@ class House:
         try:
             # Explicit proxy maps prevent a NO_PROXY entry or a missing HTTPS_PROXY from
             # silently changing the injected route. No redirect or direct fallback is used.
-            with requests.Session() as session:
+            with request_deadline(remaining), requests.Session() as session:
                 session.trust_env = False
                 with session.post(
                     url,
                     json=body,
                     headers={"Authorization": "Bearer " + token},
                     proxies={"http": proxy, "https": proxy},
-                    timeout=(10, 90),
+                    timeout=(min(10, remaining), remaining),
                     allow_redirects=False,
                     stream=True,
                 ) as response:
@@ -102,6 +140,8 @@ class House:
             if not isinstance(parsed, dict):
                 raise ValueError("reply is not an object")
             return parsed
-        except (requests.RequestException, ValueError, TypeError, KeyError, IndexError):
+        except (
+            requests.RequestException, HouseDeadline, ValueError, TypeError, KeyError, IndexError
+        ):
             self.failures.append("House response unavailable or invalid")
             return None

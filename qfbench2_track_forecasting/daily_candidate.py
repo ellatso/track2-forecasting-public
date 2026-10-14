@@ -16,7 +16,10 @@ from . import cli
 from .short_horizon import ew_cov, predict
 
 FX = frozenset(
-    ("AUD", "CAD", "CHF", "DKK", "EUR", "GBP", "JPY", "NOK", "NZD", "SEK", "CNY", "BRL", "INR")
+    (
+        "AUD", "CAD", "CHF", "DKK", "EUR", "GBP", "JPY", "NOK", "NZD", "SEK",
+        "CNY", "BRL", "INR", "MXN", "ZAR", "KRW",
+    )
 )
 SHORT_FX = {
     "id": "fx_guard75",
