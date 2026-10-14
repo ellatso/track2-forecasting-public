@@ -2,10 +2,14 @@
 
 ## Executive summary (read this first)
 
-The October 6 scoring change and October 11 Final notice require a new comparison.
-The ranked Final uses UST and G10 FX at 2-12 business days. This workflow rebuilds
-M0's published outcome-free divisors and delegates every loss to the official
-scorer. It does not ship data, outcomes or research outputs in the image.
+This is the archived protocol for the October 11 notice's 2-12-day setting.
+The October 12 correction replaces that setting with 1-4 business days, more
+Treasury and FX series, and official release cards. Use
+[FINAL-READINESS.md](../participant/FINAL-READINESS.md) for current preparation and
+`experiments.final_daily` for the source-consistent 1-4-day numeric diagnostic.
+This older workflow rebuilds M0's published outcome-free divisors and delegates
+every loss to the official scorer. It does not ship data, outcomes or research
+outputs in the image. Its older results do not establish current Final quality.
 
 Use Python 3.13 and toolkit 2.6.0. Run from this repository with an independent
 checkout of official commit a2c93e7b66b8c6a6c429fda81d6bc7873b7c5dec:

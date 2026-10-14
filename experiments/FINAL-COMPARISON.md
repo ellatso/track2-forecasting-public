@@ -19,6 +19,9 @@ This runner does not create per-unit House credentials or borrow one unit's
 allocation for other cards. `smoke` deliberately removes House configuration and
 only checks numerical fallback and execution. A user-supplied replay/live label
 is producer provenance, not a provider signature; the result states this limitation.
+No off-platform House testing opportunity is guaranteed before Final. The
+[runtime checks](../participant/FINAL-RUNTIME.md) exercise a local synthetic
+transport only; they cannot satisfy the quality-evidence requirement below.
 
 ## Private catalog
 

@@ -33,6 +33,22 @@ jobs:
           for unit in official-kit/units/*/; do qfbench2 manifest assert-public-safe "$unit"; done
           OPENBLAS_NUM_THREADS=1 python scripts/check_text_candidate.py --units official-kit/units
           OPENBLAS_NUM_THREADS=1 python scripts/check_text_candidate.py --units official-kit/units --event-timing --event-clock ecb-ust
+      - name: Check the real HTTP transport before building
+        run: |
+          python -m ruff check scripts/check_final_container.py tests/test_final_transport.py
+          OPENBLAS_NUM_THREADS=1 python -m pytest -q tests/test_final_transport.py
+      - name: Build a local linux/amd64 image for runtime checks
+        run: docker build --platform linux/amd64 -t t2-final-runtime .
+      - name: Check every card in a fresh restricted container
+        run: |
+          OPENBLAS_NUM_THREADS=1 python -m scripts.check_final_container --image t2-final-runtime --units official-kit/units --out "${{ runner.temp }}/t2-final-runtime"
+      - name: Retain the runtime report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-runtime-check
+          path: ${{ runner.temp }}/t2-final-runtime/runtime-report.json
+          retention-days: 30
   windows-script:
     runs-on: windows-latest
     steps:

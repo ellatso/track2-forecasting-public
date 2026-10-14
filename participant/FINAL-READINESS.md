@@ -34,6 +34,9 @@ seconds. The ranked roster arrangement is still to be announced.
   selection/confirmation/test stages, canonical gates and per-horizon diagnostics.
   See [FINAL-COMPARISON.md](../experiments/FINAL-COMPARISON.md). Missing outputs
   count as failures; mock or unavailable House calls cannot select a text policy.
+- Supply fresh-container checks of the actual forecast verb, uid 65534, read-only
+  mounts, a 64-MiB noexec tmpfs and real synthetic HTTP transport. See
+  [FINAL-RUNTIME.md](FINAL-RUNTIME.md). This tests execution, not House quality.
 
 ## Numeric experiment
 
@@ -73,7 +76,10 @@ do not splice H.10 observations into these panels.
    a price index, a monthly inflation change and a weekly claims count require
    different transformations and uncertainty scales.
 6. Check the actual Linux image on every new card and the previous card suite.
-   Measure live House latency and failures; mocks establish interface behavior only.
+   If an authorized House testing opportunity is available, measure live quality,
+   latency and failures. No reusable off-platform credentials are supplied here;
+   mocks establish interface behavior only. Do not assume this comparison can be
+   completed before Final when the service is available only during official runs.
 7. Select one verified digest, complete the required model disclosure, and sign
    locally with the hidden Team Key prompt. Keep the image anonymously pullable
    until the organizer publishes results. No Final upload is made by this branch.
