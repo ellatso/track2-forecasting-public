@@ -30,6 +30,10 @@ seconds. The ranked roster arrangement is still to be announced.
 - Supply opt-in cited event timing and explicit ECB/UST observation clocks, with
   release-unit/vintage helpers. See [EVENT-RESEARCH.md](EVENT-RESEARCH.md). These
   are research options; the Docker entry point and selected image are unchanged.
+- Supply a frozen three-policy comparison with event/date blocks, separate
+  selection/confirmation/test stages, canonical gates and per-horizon diagnostics.
+  See [FINAL-COMPARISON.md](../experiments/FINAL-COMPARISON.md). Missing outputs
+  count as failures; mock or unavailable House calls cannot select a text policy.
 
 ## Numeric experiment
 
