@@ -5,7 +5,9 @@ immutable phase decisions using synthetic cards and the unchanged official score
 These examples are protocol tests, never evidence of forecasting improvement.
 """
 
+import json
 import uuid
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -105,6 +107,21 @@ def test_snapshot_excludes_published_outcomes_and_scales(comparison):
         paths = list((run / "inputs" / u["handle"]).rglob("*"))
         assert not any(p.name in ["realized.parquet", "ref_scale.json", "reference"] for p in paths)
         assert c.digest(u["input_hashes"]) == u["input_digest"]
+
+
+def test_official_card_role_is_accepted_only_with_its_published_checksum(comparison):
+    _, plan = comparison
+    source = Path(plan["units"][0]["references"]["realized"]["path"]).parents[1]
+    path = source / "manifest.json"
+    manifest = json.loads(path.read_text())
+    next(item for item in manifest["files"] if item["path"] == "card.toml")["role"] = "card"
+    c.write_json(path, manifest)
+    _, selected = c.allowed_inputs(source)
+    assert any(item["path"] == "card.toml" for item in selected)
+    with (source / "card.toml").open("a") as file:
+        file.write("\n# Modified after publication.\n")
+    with pytest.raises(ValueError, match="Input checksum mismatch"):
+        c.allowed_inputs(source)
 
 
 def test_mock_cannot_win_even_when_its_synthetic_predictions_are_better(comparison):

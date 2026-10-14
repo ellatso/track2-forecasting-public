@@ -88,7 +88,9 @@ def allowed_inputs(unit):
         rel = PurePosixPath(item["path"])
         if rel.is_absolute() or ".." in rel.parts or "\\" in str(rel):
             raise ValueError("Unsafe manifest path")
-        if item.get("role") not in ("input", "fixture", "corpus"):
+        if item.get("role") not in ("input", "fixture", "corpus", "card"):
+            continue
+        if item["role"] == "card" and str(rel) != "card.toml":
             continue
         if any(p in ("reference", "realized", "solution") for p in rel.parts):
             continue
