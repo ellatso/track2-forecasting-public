@@ -122,15 +122,28 @@ def one_group(task):
         for seed in seeds:
             for cfg in cfgs:
                 use_log = cfg.get("log", False) and name.startswith("fx")
-                samples = predict(
-                    logs if use_log else diffs,
-                    np.log(anchor) if use_log else anchor,
-                    horizons,
-                    cfg,
-                    draws,
-                    seed,
-                    np.ones(len(anchor), bool) if use_log else None,
-                ).reshape(draws, -1)
+                if cfg.get("production"):
+                    from .production_audit import forecast
+
+                    samples = forecast(
+                        frame.iloc[max(0, pos - 998) : pos + 1],
+                        horizons,
+                        draws,
+                        seed,
+                        coupling=cfg.get("coupling"),
+                        width=cfg.get("width", 1.0),
+                        online_width=cfg.get("online_width", False),
+                    ).reshape(draws, -1)
+                else:
+                    samples = predict(
+                        logs if use_log else diffs,
+                        np.log(anchor) if use_log else anchor,
+                        horizons,
+                        cfg,
+                        draws,
+                        seed,
+                        np.ones(len(anchor), bool) if use_log else None,
+                    ).reshape(draws, -1)
                 joint = scoring._composite(
                     samples,
                     outcome,
@@ -164,6 +177,22 @@ def one_group(task):
                         tail=joint["tail"] / scale["tail"],
                     )
                 )
+                if cfg.get("production") and not cfg.get("coupling"):
+                    row = rows[-1]
+                    pit = np.mean(samples <= outcome, axis=0)
+                    row["pit_mean"] = float(pit.mean())
+                    row["bias_z"] = float(
+                        np.mean((outcome - samples.mean(0)) / np.maximum(samples.std(0), 1e-10))
+                    )
+                    for coverage in (50, 80, 95):
+                        alpha = (1 - coverage / 100) / 2
+                        lo, hi = np.quantile(samples, [alpha, 1 - alpha], axis=0)
+                        inside = ((lo <= outcome) & (outcome <= hi)).reshape(
+                            len(anchor), len(horizons)
+                        )
+                        row[f"coverage{coverage}"] = float(inside.mean())
+                        for j, horizon in enumerate(horizons):
+                            row[f"coverage{coverage}_h{horizon}"] = float(inside[:, j].mean())
         if counter % 25 == 0:
             print(name, counter, len(origins), flush=True)
     return rows

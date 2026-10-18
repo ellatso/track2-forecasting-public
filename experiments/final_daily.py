@@ -35,6 +35,26 @@ GROUPS = {
     "fx_em": ["MXN", "BRL", "ZAR"],
     "fx_em_asia": ["KRW", "INR"],
 }
+EXTRA_GROUPS = {
+    "rates_other": ["UST_7Y", "UST_20Y"],
+    "mixed_major": ["UST_2Y", "UST_10Y", "EUR", "JPY"],
+    "mixed_em": ["UST_3M", "UST_5Y", "MXN", "BRL"],
+}
+
+
+def select_origins(start, end, stride, weekday=None, observed=None):
+    """Subsample eligible weekdays; never replace an absent Monday by Friday."""
+    if stride <= 0:
+        raise ValueError("Positive stride required")
+    origins = pd.bdate_range(start, end)
+    if weekday is not None:
+        if weekday not in range(5):
+            raise ValueError("Weekday must be Monday=0 through Friday=4")
+        origins = origins[origins.weekday == weekday]
+    origins = origins[::stride]
+    if weekday is not None and observed is not None:
+        origins = origins[origins.isin(observed)]
+    return origins
 
 
 def ecb_to_usd(frame):
@@ -52,7 +72,7 @@ def ecb_to_usd(frame):
     return out.where(out > 0).sort_index()
 
 
-def panels(raw, cutoff):
+def panels(raw, cutoff, *, extended=False):
     """No source download takes place in a submitted container or this research runner."""
     with zipfile.ZipFile(raw / "ecb-history.zip") as z, z.open("eurofxref-hist.csv") as f:
         frame = pd.read_csv(f, index_col="Date", parse_dates=True)
@@ -63,9 +83,15 @@ def panels(raw, cutoff):
         "m": "http://schemas.microsoft.com/ado/2007/08/dataservices/metadata",
     }
     fields = {
-        "BC_3MONTH": "UST_3M", "BC_6MONTH": "UST_6M", "BC_1YEAR": "UST_1Y",
-        "BC_2YEAR": "UST_2Y", "BC_5YEAR": "UST_5Y", "BC_10YEAR": "UST_10Y",
+        "BC_3MONTH": "UST_3M",
+        "BC_6MONTH": "UST_6M",
+        "BC_1YEAR": "UST_1Y",
+        "BC_2YEAR": "UST_2Y",
+        "BC_5YEAR": "UST_5Y",
+        "BC_10YEAR": "UST_10Y",
         "BC_30YEAR": "UST_30Y",
+        "BC_7YEAR": "UST_7Y",
+        "BC_20YEAR": "UST_20Y",
     }
     rows = []
     files = [raw / "ecb-history.zip"] + sorted(raw.glob("treasury-*.xml"))
@@ -83,8 +109,13 @@ def panels(raw, cutoff):
     if rates.index.has_duplicates or fx.index.has_duplicates:
         raise ValueError("Ambiguous dates in official source downloads")
     frames = {}
-    for group, assets in GROUPS.items():
-        data = fx if group.startswith("fx") else rates
+    groups = GROUPS | EXTRA_GROUPS if extended else GROUPS
+    for group, assets in groups.items():
+        data = (
+            rates.join(fx, how="outer")
+            if group.startswith("mixed")
+            else (fx if group.startswith("fx") else rates)
+        )
         frames[group] = data.loc[data.index <= cutoff, assets].dropna()
     hashes = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in files}
     return frames, hashes
@@ -93,10 +124,13 @@ def panels(raw, cutoff):
 def configs(group):
     legacy = dict(id="legacy", vol="v9", drift=0.5)
     if group.startswith("fx"):
-        legacy = dict(id="legacy", components=[
-            dict(vol="v9", drift=0.5, weight=0.25),
-            dict(vol="ew20", drift=0.0, df=8, weight=0.75),
-        ])
+        legacy = dict(
+            id="legacy",
+            components=[
+                dict(vol="v9", drift=0.5, weight=0.25),
+                dict(vol="ew20", drift=0.0, df=8, weight=0.75),
+            ],
+        )
     rows = [legacy, dict(id="m0", vol="sample", drift=1.0)]
     rows.extend(dict(id=vol + "_zero", vol=vol, drift=0.0) for vol in ["v9", "ew20"])
     rows.extend(
@@ -120,22 +154,64 @@ def main():
     p.add_argument("--draws", type=int, default=512)
     p.add_argument("--seeds", default="0")
     p.add_argument("--stride", type=int, default=20)
+    p.add_argument(
+        "--origin-weekday",
+        type=int,
+        choices=range(5),
+        help="Require a matching observed weekday (Monday=0); stride counts eligible origins",
+    )
     p.add_argument("--workers", type=int, default=4)
+    p.add_argument("--groups", help="Comma-separated basket names; otherwise evaluate all groups")
     p.add_argument("--locked", type=Path, help="Frozen per-group candidate ids; legacy also runs")
+    p.add_argument(
+        "--audit-production",
+        action="store_true",
+        help="Compare actual numeric dispatch and marginal-preserving coupling; extended baskets",
+    )
+    p.add_argument(
+        "--audit-online-width",
+        action="store_true",
+        help="Exploratory follow-up: compare production with past-error calibration",
+    )
     args = p.parse_args()
+    if args.audit_online_width and not args.audit_production:
+        p.error("--audit-online-width requires --audit-production")
     out = args.out.resolve()
     if out == ROOT or ROOT in out.parents:
         raise ValueError("Save diagnostic outcomes and results outside the public checkout")
     out.mkdir(parents=True, exist_ok=True)
     if any(out.iterdir()):
         raise ValueError("Use a new output directory; do not overwrite a completed evaluation")
-    data, hashes = panels(args.raw, pd.Timestamp(args.cutoff))
+    data, hashes = panels(args.raw, pd.Timestamp(args.cutoff), extended=args.audit_production)
+    if args.groups:
+        names = args.groups.split(",")
+        if len(set(names)) != len(names) or not set(names).issubset(data):
+            p.error("Unknown or duplicate basket name")
+        data = {name: data[name] for name in names}
     locked = json.loads(args.locked.read_text(encoding="utf-8")) if args.locked else None
     seeds = list(map(int, args.seeds.split(",")))
-    origins = pd.bdate_range(args.start, args.end)[::args.stride]
+    origins = select_origins(args.start, args.end, args.stride, args.origin_weekday)
     tasks = []
     for group, frame in data.items():
         rows = configs(group)
+        if args.audit_production:
+            if args.locked:
+                raise ValueError(
+                    "Production audit has a fixed comparison, not locked candidate ids"
+                )
+            rows = [
+                rows[0],
+                dict(id="production", production=True),
+                dict(id="production_ew60", production=True, coupling="ew60"),
+                dict(id="production_shrink50", production=True, coupling="shrink50"),
+                dict(id="production_width80", production=True, width=0.8),
+                dict(id="production_width120", production=True, width=1.2),
+            ]
+            if args.audit_online_width:
+                rows = [
+                    dict(id="production", production=True),
+                    dict(id="production_online_width", production=True, online_width=True),
+                ]
         if locked is not None:
             ids = {"legacy", locked[group]}
             rows = [r for r in rows if r["id"] in ids]
@@ -147,20 +223,42 @@ def main():
             if not set(card["targets"]["asset_ids"]).intersection(frame.columns):
                 continue
             date = pd.Timestamp(str(card["provenance"]["data_cutoff"])[:10])
-            excluded.append((
-                date - pd.Timedelta(days=7),
-                date + pd.offsets.BDay(max(card["targets"]["horizons"])),
-            ))
-        tasks.append((group, frame, origins, rows, args.draws, seeds, [1, 2, 3, 4], excluded))
+            excluded.append(
+                (
+                    date - pd.Timedelta(days=7),
+                    date + pd.offsets.BDay(max(card["targets"]["horizons"])),
+                )
+            )
+        group_origins = origins
+        if args.origin_weekday is not None:
+            # A missing Monday must not silently become Friday's forecast.
+            group_origins = select_origins(
+                args.start, args.end, args.stride, args.origin_weekday, frame.index
+            )
+        tasks.append((group, frame, group_origins, rows, args.draws, seeds, [1, 2, 3, 4], excluded))
     plan = dict(
-        start=args.start, end=args.end, data_cutoff=args.cutoff,
-        horizons=[1, 2, 3, 4], draws=args.draws, seeds=seeds, stride=args.stride,
-        sources=hashes, groups=GROUPS,
+        start=args.start,
+        end=args.end,
+        data_cutoff=args.cutoff,
+        horizons=[1, 2, 3, 4],
+        draws=args.draws,
+        seeds=seeds,
+        stride=args.stride,
+        origin_weekday=args.origin_weekday,
+        sources=hashes,
+        groups={g: list(f) for g, f in data.items()},
+        production_audit=args.audit_production,
+        online_width_followup=args.audit_online_width,
+        single_cell_rule=(
+            "Score a rotating slice of the joint forecast; "
+            "not an independent singleton invocation"
+        ),
         configurations={t[0]: t[3] for t in tasks},
         split_boundary_rule="origin and every target date must belong to the requested period",
         source_rule="ECB cross rates only for FX; Treasury daily par curve only for yields",
         missing_dates="Drop absent holiday target dates; no forward filling",
-        rankable=False, macro_release_cards="NOT covered",
+        rankable=False,
+        macro_release_cards="NOT covered",
     )
     (out / "plan.json").write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
     rows = []
@@ -177,8 +275,14 @@ def main():
         ["loss", "joint_loss", "single_loss", "marginal", "joint", "tail"]
     ].mean().to_csv(out / "summary.csv")
     f.groupby(["config", "group", f.origin.str[:4]]).loss.mean().to_csv(out / "years.csv")
-    print("COMPLETE", len(f), "scores", f[["group", "origin"]].drop_duplicates().shape[0],
-          "cases", flush=True)
+    print(
+        "COMPLETE",
+        len(f),
+        "scores",
+        f[["group", "origin"]].drop_duplicates().shape[0],
+        "cases",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
