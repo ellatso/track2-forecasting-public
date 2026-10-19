@@ -134,6 +134,16 @@ def one_group(task):
                         width=cfg.get("width", 1.0),
                         online_width=cfg.get("online_width", False),
                     ).reshape(draws, -1)
+                    if cfg.get("mixture") is not None:
+                        from qfbench2_track_forecasting.short_horizon import innovations
+
+                        other = predict(
+                            diffs, anchor, horizons, dict(vol="sample", drift=0.0), draws, seed
+                        ).reshape(draws, -1)
+                        _, _, selector = innovations(
+                            draws, len(anchor), len(horizons), seed + 104729, 0
+                        )
+                        samples[selector < cfg["mixture"]] = other[selector < cfg["mixture"]]
                 else:
                     samples = predict(
                         logs if use_log else diffs,
