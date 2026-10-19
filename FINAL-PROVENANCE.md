@@ -57,3 +57,24 @@ anonymously pullable until results are published.
 Sources: official issue 4, comment 6252030411; shared toolkit docs/HOUSE-MODEL.md
 and docs/DEVELOPMENT-RUNTIME.md. Ordinary Docker checks do not reproduce gVisor
 or guarantee the organizer's whole-roster runtime.
+
+## Independent-review corrections, 19 October
+
+House membership and scenario labels now use a separate pseudorandom stream.
+Different Sobol scrambles can share binary row structure, so they cannot assign
+independent labels to the existing Sobol paths. Exactly half of complete paths
+remain numeric. Tests check sign balance, scenario independence and both tails
+across four seeds, and detect the defect on the preceding source revision.
+No numeric sampler, parameter, seed or draw count changes.
+
+The client retains explicit audited proxy routing and certificate verification.
+REQUESTS_CA_BUNDLE, then CURL_CA_BUNDLE, is honored explicitly despite disabled
+environment proxy discovery. Unreadable CA paths retain the numeric forecast.
+The container checks also exercise the published nested panels directory.
+
+The official monthly level contract still requires explicit observation periods.
+No period, growth transformation, weekly or quarterly contract is guessed from
+malformed synthetic cards. A 180-second per-unit House budget cannot guarantee
+completion for an undisclosed roster: over 230 continuously exhausted budgets
+would exceed the 12-hour stage limit including numeric work. No rank or live
+House forecast-quality guarantee follows from these corrections.

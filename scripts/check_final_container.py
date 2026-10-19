@@ -286,8 +286,25 @@ def host_main(image, units, output):
             for mode in ["numeric", "valid", "http_error", "invalid_json", "truncated"]
         ]
         tasks += [(unit, "valid", True)]
+    # Exercise the published /input/panels layout as well as practice flat roots.
+    # Only paths change; the manifest hashes and all input bytes are retained.
+    for unit in representatives.values():
+        nested = output / "nested-inputs" / unit.name
+        shutil.copytree(unit, nested)
+        manifest_path = nested / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        for item in manifest["files"]:
+            original = nested / item["path"]
+            if original.suffix == ".parquet" and original.parent == nested:
+                (nested / "panels").mkdir(exist_ok=True)
+                destination = nested / "panels" / original.name
+                original.rename(destination)
+                item["path"] = destination.relative_to(nested).as_posix()
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        tasks += [(nested, mode, False) for mode in ["offline", "numeric", "valid"]]
     for unit, mode, timed in tasks:
-        label = mode + ("-timed" if timed else "")
+        nested_layout = unit.parent.name == "nested-inputs"
+        label = mode + ("-timed" if timed else "") + ("-nested" if nested_layout else "")
         folder = output / unit.name / label
         folder.mkdir(parents=True)
         folder.chmod(0o777)
@@ -326,7 +343,8 @@ def host_main(image, units, output):
                 expected_requests = 2 if mode == "valid" else 1
                 if meta["house_requests_attempted"] != expected_requests:
                     raise RuntimeError("Unexpected HTTP request count")
-                base = pd.read_parquet(output / unit.name / "numeric/forecast.parquet")
+                numeric_label = "numeric-nested" if nested_layout else "numeric"
+                base = pd.read_parquet(output / unit.name / numeric_label / "forecast.parquet")
                 actual = pd.read_parquet(folder / "forecast.parquet")
                 if mode == "valid":
                     draws = meta["n_draws"]
@@ -337,6 +355,21 @@ def host_main(image, units, output):
                         raise RuntimeError(
                             "Synthetic adjustment must retain exactly half the paths"
                         )
+                    import numpy as np
+
+                    values = base.value.to_numpy().reshape(draws, -1)
+                    centre, spread = values.mean(0), values.std(0)
+                    selected = values[~equal]
+                    varying = spread > 1e-10
+                    if varying.any() and (
+                        np.max(
+                            np.abs(selected.mean(0)[varying] - centre[varying]) / spread[varying]
+                        )
+                        > 0.12
+                        or np.max(np.abs((selected > centre).mean(0) - (values > centre).mean(0)))
+                        > 0.08
+                    ):
+                        raise RuntimeError("House membership selects forecast levels or signs")
                 else:
                     pd.testing.assert_frame_equal(base, actual, check_exact=True)
                     if meta["reasoning_applied"]:

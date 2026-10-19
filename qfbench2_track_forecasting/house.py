@@ -116,6 +116,13 @@ class House:
                     json=body,
                     headers={"Authorization": "Bearer " + token},
                     proxies={"http": proxy, "https": proxy},
+                    # trust_env=False deliberately isolates proxy selection, but
+                    # also disables Requests' automatic CA-bundle lookup.
+                    verify=(
+                        os.environ.get("REQUESTS_CA_BUNDLE")
+                        or os.environ.get("CURL_CA_BUNDLE")
+                        or True
+                    ),
                     timeout=(min(10, remaining), remaining),
                     allow_redirects=False,
                     stream=True,
@@ -141,7 +148,13 @@ class House:
                 raise ValueError("reply is not an object")
             return parsed
         except (
-            requests.RequestException, HouseDeadline, ValueError, TypeError, KeyError, IndexError
+            requests.RequestException,
+            HouseDeadline,
+            ValueError,
+            TypeError,
+            KeyError,
+            IndexError,
+            OSError,
         ):
             self.failures.append("House response unavailable or invalid")
             return None

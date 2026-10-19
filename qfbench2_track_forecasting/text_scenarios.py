@@ -12,7 +12,6 @@ import math
 
 import numpy as np
 import pandas as pd
-from scipy.stats import qmc
 
 from . import agent, cli
 from .daily_candidate import FX
@@ -253,10 +252,13 @@ def apply(base, assets, horizons, summary, mean, sd, risk, scenarios, seed):
     """Whole-path scenarios share every horizon and asset; exactly half stays V12."""
     if not scenarios:
         return base.copy()
-    uniforms = qmc.Sobol(2, scramble=True, seed=seed + 104729).random_base2(int(np.log2(len(base))))
-    active = uniforms[:, 0] < 0.5
+    # Separately scrambled Sobol engines still share row-wise binary structure.
+    # Use an independent pseudorandom stream, never a Sobol coordinate or the
+    # values of a forecast, to assign membership and the whole-path scenario.
+    rng = np.random.default_rng(seed + 104729)
+    active = rng.permutation(len(base)) < len(base) // 2
     scenario = np.searchsorted(
-        np.cumsum([s["weight"] for s in scenarios]), uniforms[:, 1], side="right"
+        np.cumsum([s["weight"] for s in scenarios]), rng.random(len(base)), side="right"
     )
     out = base.copy()
     h = np.asarray(horizons, float)

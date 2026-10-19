@@ -23,8 +23,8 @@ jobs:
           python -m pip install --no-deps -e .
       - name: Test runtime, monthly contract and release arithmetic
         run: |
-          python -m ruff check scripts/check_final_container.py qfbench2_track_forecasting/house.py qfbench2_track_forecasting/text_candidate.py qfbench2_track_forecasting/horizons.py qfbench2_track_forecasting/release_units.py
-          OPENBLAS_NUM_THREADS=1 python -m pytest -o addopts='' -q tests/test_candidate_cutoff.py tests/test_comparison_protocol.py tests/test_event_timing.py tests/test_final_coverage.py tests/test_final_transport.py tests/test_house_deadline.py tests/test_integrated_agent.py tests/test_monthly_horizons.py tests/test_monthly_reference_cli.py tests/test_monthly_trend_candidate.py tests/test_practice_ps1.py tests/test_precision_candidate.py tests/test_production_audit.py tests/test_reference_cli.py tests/test_release_units.py tests/test_short_horizon.py tests/test_submission_candidate.py tests/test_text_candidate.py tests/test_v12.py --junitxml=unit-tests.xml
+          python -m ruff check scripts/check_final_container.py qfbench2_track_forecasting/house.py qfbench2_track_forecasting/text_candidate.py qfbench2_track_forecasting/text_scenarios.py qfbench2_track_forecasting/horizons.py qfbench2_track_forecasting/release_units.py tests/test_house_assignment.py tests/test_house_deadline.py
+          OPENBLAS_NUM_THREADS=1 python -m pytest -o addopts='' -q tests/test_candidate_cutoff.py tests/test_comparison_protocol.py tests/test_event_timing.py tests/test_final_coverage.py tests/test_final_transport.py tests/test_house_deadline.py tests/test_house_assignment.py tests/test_integrated_agent.py tests/test_monthly_horizons.py tests/test_monthly_reference_cli.py tests/test_monthly_trend_candidate.py tests/test_practice_ps1.py tests/test_precision_candidate.py tests/test_production_audit.py tests/test_reference_cli.py tests/test_release_units.py tests/test_short_horizon.py tests/test_submission_candidate.py tests/test_text_candidate.py tests/test_v12.py --junitxml=unit-tests.xml
       - uses: actions/checkout@v4
         with:
           repository: Agenthon-2026/track2-forecasting-public
@@ -39,7 +39,7 @@ jobs:
           IMAGE: ghcr.io/ellatso/agenthon-t2:final-20261019-${{ github.sha }}
         run: |
           docker build --platform linux/amd64 --label org.opencontainers.image.revision="$GITHUB_SHA" -t "$IMAGE" .
-      - name: Test actual entry point in 126 fresh containers and synthetic HTTP cases
+      - name: Test actual entry point on 126 cards, nested layouts and synthetic HTTP cases
         env:
           IMAGE: ghcr.io/ellatso/agenthon-t2:final-20261019-${{ github.sha }}
         run: |
@@ -77,10 +77,10 @@ jobs:
           assert re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
           out=pathlib.Path('final-handoff')
           report=json.loads((out/'runtime-report.json').read_text())
-          assert not report['failures'] and len(report['cases'])==150
+          assert not report['failures'] and len(report['cases'])==162
           descriptor=dict(schema_version='1.1.0',interface_version='2.0',competition_id='agenthon2026-forecasting-final',track='forecasting',phase='final',category='api',image=dict(registry='ghcr.io',repository='ellatso/agenthon-t2',digest=digest),image_access='public',models=[dict(name='nvidia/nemotron-3-super-120b-a12b',version='rl-030326-fp8',revision='rl-030326-fp8',training_cutoff='unpublished',access='api')],license='MIT')
           (out/'submission-final.json').write_text(json.dumps(descriptor,indent=2)+'\n')
-          identity=dict(source_commit=os.environ['GITHUB_SHA'],image_digest=digest,local_image_id=report['image_id'],official_kit='0ddb8896a942b9d44c64927f74755e7012c3e5f9',cards=126,container_cases=150,anonymous_digest_pull=True,live_house_quality_test=False,uploaded_to_codabench=False)
+          identity=dict(source_commit=os.environ['GITHUB_SHA'],image_digest=digest,local_image_id=report['image_id'],official_kit='0ddb8896a942b9d44c64927f74755e7012c3e5f9',cards=126,container_cases=162,anonymous_digest_pull=True,live_house_quality_test=False,uploaded_to_codabench=False)
           (out/'release-identity.json').write_text(json.dumps(identity,indent=2)+'\n')
           print(json.dumps(identity))
           PY
