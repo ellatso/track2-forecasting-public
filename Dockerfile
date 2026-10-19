@@ -49,11 +49,11 @@ RUN pip install --no-cache-dir \
         "pyarrow==18.1.0" \
         "jsonschema==4.23.0" \
         "requests==2.34.2" \
-        "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.6.0.tar.gz#subdirectory=common"
+        "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.6.1.tar.gz#subdirectory=common"
 
 WORKDIR /work
 COPY qfbench2_track_forecasting /opt/qfbench2_track_forecasting
-COPY V13-PROVENANCE.md /opt/ARTIFACT_PROVENANCE.md
+COPY FINAL-PROVENANCE.md /opt/ARTIFACT_PROVENANCE.md
 ENV PYTHONPATH=/opt
 
 # The verb, as an executable on PATH.

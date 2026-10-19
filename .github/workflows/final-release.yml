@@ -1,0 +1,111 @@
+# Executive summary: test every released card, publish the same image and prepare unsigned Final files.
+name: Verified Final image and local signing kit
+on:
+  push:
+    branches: [submission/t2-final-20261019]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install pinned runtime
+        run: |
+          python -m pip install numpy==2.1.3 scipy==1.15.3 pandas==2.2.3 pyarrow==18.1.0 jsonschema==4.23.0 requests==2.34.2 pytest ruff==0.4.7
+          python -m pip install "qfbench2-common @ https://github.com/Agenthon-2026/Agenthon2026-public/archive/refs/tags/v2.6.1.tar.gz#subdirectory=common"
+          python -m pip install --no-deps -e .
+      - name: Test runtime, monthly contract and release arithmetic
+        run: |
+          python -m ruff check scripts/check_final_container.py qfbench2_track_forecasting/house.py qfbench2_track_forecasting/text_candidate.py qfbench2_track_forecasting/horizons.py qfbench2_track_forecasting/release_units.py
+          OPENBLAS_NUM_THREADS=1 python -m pytest -o addopts='' -q tests/test_candidate_cutoff.py tests/test_comparison_protocol.py tests/test_event_timing.py tests/test_final_coverage.py tests/test_final_transport.py tests/test_house_deadline.py tests/test_integrated_agent.py tests/test_monthly_horizons.py tests/test_monthly_reference_cli.py tests/test_monthly_trend_candidate.py tests/test_practice_ps1.py tests/test_precision_candidate.py tests/test_production_audit.py tests/test_reference_cli.py tests/test_release_units.py tests/test_short_horizon.py tests/test_submission_candidate.py tests/test_text_candidate.py tests/test_v12.py --junitxml=unit-tests.xml
+      - uses: actions/checkout@v4
+        with:
+          repository: Agenthon-2026/track2-forecasting-public
+          ref: 0ddb8896a942b9d44c64927f74755e7012c3e5f9
+          path: official-kit
+      - name: Verify input manifests
+        run: |
+          test "$(find official-kit/units -name card.toml | wc -l)" -eq 126
+          for unit in official-kit/units/*/; do qfbench2 manifest assert-public-safe "$unit"; done
+      - name: Build once with source identity
+        env:
+          IMAGE: ghcr.io/ellatso/agenthon-t2:final-20261019-${{ github.sha }}
+        run: |
+          docker build --platform linux/amd64 --label org.opencontainers.image.revision="$GITHUB_SHA" -t "$IMAGE" .
+      - name: Test actual entry point in 126 fresh containers and synthetic HTTP cases
+        env:
+          IMAGE: ghcr.io/ellatso/agenthon-t2:final-20261019-${{ github.sha }}
+        run: |
+          OPENBLAS_NUM_THREADS=1 python -m scripts.check_final_container --image "$IMAGE" --units official-kit/units --out "${{ runner.temp }}/final-runtime"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish exactly the tested image
+        id: publish
+        env:
+          IMAGE: ghcr.io/ellatso/agenthon-t2:final-20261019-${{ github.sha }}
+        run: |
+          docker push "$IMAGE" | tee publish.log
+          digest=$(sed -n 's/.*digest: \(sha256:[0-9a-f]\{64\}\).*/\1/p' publish.log | tail -1)
+          test -n "$digest"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          docker logout ghcr.io
+          docker pull "ghcr.io/ellatso/agenthon-t2@$digest"
+          tested=$(docker image inspect "$IMAGE" --format '{{.Id}}')
+          pulled=$(docker image inspect "ghcr.io/ellatso/agenthon-t2@$digest" --format '{{.Id}}')
+          test "$tested" = "$pulled"
+      - name: Prepare unsigned descriptor and evidence
+        env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          mkdir final-handoff
+          cp participant/pack-final-windows.ps1 final-handoff/
+          cp FINAL-PROVENANCE.md unit-tests.xml final-handoff/
+          cp "${{ runner.temp }}/final-runtime/runtime-report.json" final-handoff/
+          python - <<'PY'
+          import json, os, pathlib, re
+          digest=os.environ['IMAGE_DIGEST']
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}', digest)
+          out=pathlib.Path('final-handoff')
+          report=json.loads((out/'runtime-report.json').read_text())
+          assert not report['failures'] and len(report['cases'])==150
+          descriptor=dict(schema_version='1.1.0',interface_version='2.0',competition_id='agenthon2026-forecasting-final',track='forecasting',phase='final',category='api',image=dict(registry='ghcr.io',repository='ellatso/agenthon-t2',digest=digest),image_access='public',models=[dict(name='nvidia/nemotron-3-super-120b-a12b',version='rl-030326-fp8',revision='rl-030326-fp8',training_cutoff='unpublished',access='api')],license='MIT')
+          (out/'submission-final.json').write_text(json.dumps(descriptor,indent=2)+'\n')
+          identity=dict(source_commit=os.environ['GITHUB_SHA'],image_digest=digest,local_image_id=report['image_id'],official_kit='0ddb8896a942b9d44c64927f74755e7012c3e5f9',cards=126,container_cases=150,anonymous_digest_pull=True,live_house_quality_test=False,uploaded_to_codabench=False)
+          (out/'release-identity.json').write_text(json.dumps(identity,indent=2)+'\n')
+          print(json.dumps(identity))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-final-signing-kit
+          path: final-handoff/
+          retention-days: 30
+      - name: Keep failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-release-failure-diagnostics
+          path: |
+            unit-tests.xml
+            ${{ runner.temp }}/final-runtime/runtime-report.json
+          retention-days: 30
+  windows-packer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell signing script
+        shell: powershell
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'participant/pack-final-windows.ps1'), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) { $parseErrors | ForEach-Object { Write-Error $_ }; exit 1 }
